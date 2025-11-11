@@ -1,0 +1,194 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import os
+from PIL import Image, ImageTk
+import logging
+import tempfile
+from src.utils import converter
+from src.utils import enhancement
+
+from src.frames.base_frame import BaseFrame
+
+
+def confirm_overwrite(out_path):
+    if os.path.exists(out_path):
+        return messagebox.askyesno(
+            "File Exists", f"File already exists:\n{out_path}\nOverwrite?"
+        )
+    return True
+
+
+def acknowledge_overwrite():
+    """
+    Show a dialog warning that file overwrite will not prompt again during conversion.
+    Returns True if user chooses to continue, False to cancel.
+    """
+    try:
+        return messagebox.askyesno(
+            "Overwrite Warning",
+            "After conversion starts, existing files may be overwritten without further prompts. Continue?",
+        )
+    except Exception:
+        return True  # Default to continue if no GUI context
+
+
+class BaseTab(BaseFrame):
+    """
+    Generic Tab base class, encapsulates common layout, logging, title, etc.
+    Subclasses only need to implement custom widgets and business logic.
+    """
+
+    def __init__(self, parent, title=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.logger = getattr(self.winfo_toplevel(), "logger", None)
+        self.preview_frame = getattr(self.winfo_toplevel(), "preview_frame", None)
+
+        self.output_dir = getattr(self.winfo_toplevel(), "output_dir", None)
+        self.out_dir = tk.StringVar(value=self.output_dir)
+
+    # Subclasses can override this method to add custom widgets
+    def build_content(self):
+        pass
+
+    def file_preview(self, img_path):
+        try:
+            ext = os.path.splitext(img_path)[1].lower()
+            # Support vector preview: svg/pdf/eps/ps
+
+            if ext in (".svg", ".pdf", ".eps", ".ps"):
+                self.log("Vector file detected, converting to bitmap for preview...")
+                with tempfile.NamedTemporaryFile(
+                    suffix=".png", delete=False
+                ) as tmp_png:
+                    png_path = tmp_png.name
+                try:
+                    converter.vector_to_bitmap(img_path, png_path, dpi=60)
+                    with Image.open(png_path) as img:
+                        img.thumbnail((100, 100))
+                except Exception as ve:
+                    raise
+                finally:
+                    if os.path.exists(png_path):
+                        os.remove(png_path)
+            else:
+                img = Image.open(img_path)
+            self.log("Displaying preview image...")
+            self.image_preview(img)
+        except Exception as e:
+            self.winfo_toplevel().clear_preview()
+            if self.preview_frame:
+                tk.Label(self.preview_frame, text="No Preview Available").pack(
+                    expand=True
+                )
+
+    def image_preview(self, img):
+        """
+        Display imgtk in preview_frame and keep reference to prevent GC.
+        """
+        self.winfo_toplevel().clear_preview()
+        if self.preview_frame:
+            try:
+                img.thumbnail((100, 100))
+                imgtk = ImageTk.PhotoImage(img)
+                label = tk.Label(self.preview_frame, image=imgtk)
+                label.image = imgtk
+                label.pack(expand=True)
+            except Exception as e:
+                tk.Label(self.preview_frame, text="Preview failed").pack(expand=True)
+
+    def batch_convert(self, mode, file_list, out_dir=None, out_ext=None, **kwargs):
+        """
+        General batch conversion template.
+        Args:
+            process_func: single file handler, signature process_func(infile, outfile, **extra_args)
+            log_prefix: log prefix (optional)
+            extra_args: extra argument dict (optional)
+        Automatically collects input files, output directory, batch processes, counts success and failure.
+        Supports analysis-type handler (no output file), in which case process_func returns None.
+        """
+        # Treat [''] (from empty entry) as no input files
+        self.log(f"[New Task]: {mode}, {len(file_list)} files", logging.INFO)
+        if not file_list or (len(file_list) == 1 and file_list[0].strip() == ""):
+            self.log("No input files selected", logging.ERROR)
+            return
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        for f in file_list:
+            if hasattr(self, "file_preview"):
+                self.file_preview(f)
+            base = os.path.splitext(os.path.basename(f))[0]
+            if mode == "b2v":
+                out_path = os.path.join(out_dir, base + out_ext)
+                if confirm_overwrite(out_path):
+                    converter.embed_bitmap_to_vector(
+                        in_path=f,
+                        out_path=out_path,
+                        dpi=kwargs.get('dpi', 300),
+                        log_fun=self.log,
+                    )
+            elif mode == "b2b":
+                out_path = os.path.join(out_dir, base + out_ext)
+                if confirm_overwrite(out_path):
+                    converter.bitmap_to_bitmap(
+                        in_path=f,
+                        out_path=out_path,
+                        quality=kwargs.get('quality', 95),
+                        log_fun=self.log,
+                    )
+            elif mode == "v2b":
+                out_path = os.path.join(out_dir, base + out_ext)
+                if confirm_overwrite(out_path):
+                    converter.vector_to_bitmap(
+                        in_path=f,
+                        out_path=out_path,
+                        dpi=kwargs.get('dpi', 300),
+                        log_fun=self.log,
+                    )
+            elif mode == "v2v":
+                out_path = os.path.join(out_dir, base + out_ext)
+                if confirm_overwrite(out_path):
+                    converter.vector_to_vector(
+                        in_path=f, out_path=out_path, log_fun=self.log
+                    )
+            elif mode == "analyze":
+                converter.vector_analyzer(f, log_fun=self.log)
+            elif mode == "upscale":
+                out_path = os.path.join(out_dir, 'upscaled_' + os.path.basename(f))
+                if confirm_overwrite(out_path):
+                    enhancement.upscale_image(
+                        f,
+                        out_path=out_path,
+                        scale_factor=kwargs.get('scale_factor', 2),
+                        log_fun=self.log,
+                    )
+            elif mode == "grayscale":
+                out_path = os.path.join(out_dir, 'grayscale_' + os.path.basename(f))
+                if confirm_overwrite(out_path):
+                    enhancement.grayscale_image(
+                        f, 
+                        out_path=out_path, 
+                        log_fun=self.log
+                    )
+            elif mode == "potrace":
+                if os.path.getsize(f) > 200 * 1024:
+                    raise RuntimeError(f"File too large (>200K): {os.path.basename(f)}")
+                bmp_path = os.path.join(out_dir, base + "_potrace.bmp")
+                out_path = os.path.join(out_dir, 'traced_' + base + out_ext)
+                if confirm_overwrite(out_path):
+                    enhancement.grayscale_image(
+                        f, bmp_path, log_fun=self.log, binarize=True
+                    )
+                    converter.bmp_to_vector(bmp_path, out_path, log_fun=self.log)
+                    try:
+                        os.remove(bmp_path)
+                        self.log(f"Temporary BMP removed: {bmp_path}", logging.INFO)
+                    except Exception as e:
+                        self.log(
+                            f"Warning: failed to remove temp BMP: {bmp_path}, {e}",
+                            logging.WARNING,
+                        )
+            else:
+                raise ValueError("Unsupported conversion mode")
+
+        self.log("[Task Completed]", logging.INFO)

@@ -1,0 +1,37 @@
+[
+    {
+        "key": "ghostscript",
+        "display": "Ghostscript",
+        "executables": ["gswin64c", "gswin32c", "gs"],
+        "config_key": "ghostscript_path",
+        "type": "exe"
+    },
+    {
+        "key": "pstoedit",
+        "display": "pstoedit",
+        "executables": ["pstoedit"],
+        "config_key": "pstoedit_path",
+        "type": "exe"
+    },
+    {
+        "key": "cairosvg",
+        "display": "cairosvg (Python)",
+        "executables": [],
+        "config_key": null,
+        "type": "python"
+    },
+    {
+        "key": "potrace",
+        "display": "Potrace",
+        "executables": ["potrace"],
+        "config_key": "potrace_path",
+        "type": "exe"
+    },
+    {
+        "key": "libcairo-2.dll",
+        "display": "cairosvg library",
+        "executables": ["libcairo-2.dll"],
+        "config_key": null,
+        "type": "dll"
+    }
+]

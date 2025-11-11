@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Formats: Bitmap vs Vector</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; background: #fff; color: #222; }
+        h1, h2, h3 { color: #2a4d7a; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #bbb; padding: 0.5em 1em; text-align: left; }
+        th { background: #f0f4fa; }
+        code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+        ul, ol { margin-left: 2em; }
+        .tip { background: #f9f9e3; border-left: 4px solid #ffe066; padding: 0.5em 1em; margin: 1em 0; }
+    </style>
+</head>
+<body>
+<h1>Image Formats: Bitmap vs Vector</h1>
+<p>This document explains the key differences between bitmap and vector image formats, and clarifies how parameters like pixel size, DPI, and page size affect their use in display and printing workflows.</p>
+
+<h2>Bitmap (Raster) Images</h2>
+<ul>
+  <li><strong>Formats:</strong> PNG, JPEG, BMP, TIFF, GIF, etc.</li>
+  <li><strong>Core property:</strong> Pixel dimensions (width × height)</li>
+  <li><strong>DPI (Dots Per Inch):</strong>
+    <ul>
+      <li>Stored as metadata in some formats (e.g., PNG, TIFF, JPEG)</li>
+      <li><strong>DPI only matters for printing or when embedding into vector/page formats</strong></li>
+      <li>For display on screens, only pixel size is used; DPI is ignored</li>
+    </ul>
+  </li>
+  <li><strong>Physical size calculation:</strong>
+    <ul>
+      <li>Physical width (inches) = pixel width / DPI</li>
+      <li>Physical height (inches) = pixel height / DPI</li>
+    </ul>
+  </li>
+  <li><strong>Common confusion:</strong>
+    <ul>
+      <li>Changing DPI does not change pixel data, only how large the image prints</li>
+      <li>For web/screen, DPI is irrelevant</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Vector Images</h2>
+<ul>
+  <li><strong>Formats:</strong> SVG, PDF, EPS, PS, AI, etc.</li>
+  <li><strong>Core property:</strong> Geometric shapes, paths, and text</li>
+  <li><strong>Page size:</strong>
+    <ul>
+      <li>Vector formats define a page or canvas size in physical units (pt, mm, in)</li>
+      <li>Example: PDF/EPS/PS use pt (1pt = 1/72 inch); SVG can use px, mm, in, pt</li>
+    </ul>
+  </li>
+  <li><strong>Embedded bitmaps:</strong>
+    <ul>
+      <li>Vector files can embed bitmap images</li>
+      <li>The physical size of embedded bitmaps is determined by their pixel size and assigned DPI</li>
+    </ul>
+  </li>
+  <li><strong>DPI in vector formats:</strong>
+    <ul>
+      <li>SVG: No global DPI; size depends on units (px, mm, in, pt)</li>
+      <li>PDF/EPS/PS: Page size is physical; embedded bitmaps use DPI to map pixels to physical size</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Display vs Print</h2>
+<ul>
+  <li><strong>Display (screen):</strong>
+    <ul>
+      <li>Bitmap: Pixel size is all that matters</li>
+      <li>Vector: Rendered to screen pixels; page size and DPI are ignored</li>
+    </ul>
+  </li>
+  <li><strong>Print:</strong>
+    <ul>
+      <li>Bitmap: DPI determines printed size</li>
+      <li>Vector: Page size determines printed area; embedded bitmaps use DPI for scaling</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Practical Tips</h2>
+<ul>
+  <li><strong>Bitmap DPI:</strong>
+    <ul>
+      <li>Set DPI only if you care about print size</li>
+      <li>For screen use, ignore DPI</li>
+    </ul>
+  </li>
+  <li><strong>Vector page size:</strong>
+    <ul>
+      <li>Always check units (pt, mm, in, px)</li>
+      <li>For precise print output, use physical units</li>
+    </ul>
+  </li>
+  <li><strong>SVG:</strong>
+    <ul>
+      <li>Use width/height with units for physical size</li>
+      <li>Use viewBox for scalable graphics</li>
+    </ul>
+  </li>
+  <li><strong>PDF/EPS/PS:</strong>
+    <ul>
+      <li>Page size is always physical</li>
+      <li>Embedded bitmaps: DPI controls print size</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Common User Confusions</h2>
+<ul>
+  <li><strong>"Why does my image print so small/large?"</strong>
+    <ul>
+      <li>Check DPI and pixel size for bitmaps</li>
+      <li>Check page size and units for vector files</li>
+    </ul>
+  </li>
+  <li><strong>"Why does DPI not affect my image on screen?"</strong>
+    <ul>
+      <li>DPI is only for print or embedding, not for display</li>
+    </ul>
+  </li>
+  <li><strong>"How do I control SVG print size?"</strong>
+    <ul>
+      <li>Use width/height with units (e.g., mm, in, pt)</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Summary Table</h2>
+<table>
+<thead>
+<tr><th>Format</th><th>Pixel Size</th><th>DPI</th><th>Page Size</th><th>Print Size Control</th></tr>
+</thead>
+<tbody>
+<tr><td>PNG/JPEG/BMP</td><td>Yes</td><td>Sometimes</td><td>No</td><td>DPI + pixel size</td></tr>
+<tr><td>SVG</td><td>Optional</td><td>No</td><td>Yes (units)</td><td>width/height units</td></tr>
+<tr><td>PDF/EPS/PS</td><td>No</td><td>For embedded bitmaps</td><td>Yes (pt/in/mm)</td><td>Page size + bitmap DPI</td></tr>
+</tbody>
+</table>
+<hr>
+<p><em>For further questions, see the FAQ or contact support.</em></p>
+</body>
+</html>

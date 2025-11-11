@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ImBridge 帮助文档</title>
+    <style>
+  body { font-family: Arial, sans-serif; margin: 2em; background: #fff; color: #222; }
+  h1, h2, h3 { color: #2a4d7a; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #bbb; padding: 0.5em 1em; text-align: left; }
+  th { background: #f0f4fa; }
+  code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+  ul, ol { margin-left: 0.5em; }
+  .tip { background: #f9f9e3; border-left: 4px solid #ffe066; padding: 0.5em 1em; margin: 1em 0; }
+    </style>
+</head>
+<body>
+<h1>ImBridge Help</h1>
+<p><b>ImBridge</b> is a local tool for batch image/document conversion and enhancement. It supports conversion between various bitmap and vector formats, resolution enhancement, grayscale/binarization, and batch processing. Suitable for research, office, printing, and more.</p>
+
+<h2>Main Features</h2>
+<ul>
+  <li><b>Batch image format conversion:</b> Supports conversion between PNG, JPEG, BMP, TIFF, SVG, PDF, EPS, PS, etc.</li>
+  <li><b>Vector and bitmap conversion:</b> High-quality conversion between vector (SVG/PDF/EPS/PS) and bitmap (PNG/JPG/BMP/TIFF) formats.</li>
+  <li><b>Resolution enhancement:</b> Improve image resolution using interpolation and sharpening algorithms, suitable for printing and high-precision needs.</li>
+  <li><b>Grayscale/Binarization:</b> Support for grayscale and binarization, suitable for document scanning, signatures, etc.</li>
+  <li><b>Batch processing:</b> Batch conversion and enhancement for multiple files, improving efficiency.</li>
+  <li><b>Vector analysis:</b> Automatically analyze PDF/SVG/EPS vector files, distinguish vector/raster/mixed types.</li>
+</ul>
+
+<h2>Typical Workflows</h2>
+<ul>
+  <h3>Bitmap conversion</h3>
+  <p>To convert between bitmap formats (PNG, JPEG, BMP, TIFF) or to vector formats (SVG, PDF, EPS, PS):</p>
+    <ol>
+      <li>Navigate to the <i>Bitmap</i> tab.</li>
+      <li>
+        <b>Input/Output Settings:</b> 
+          <ul>
+            <li>Select <i>input files</i> (multi-select supported)</li>
+            <li>Choose <i>output folder</i>.</li>
+            <li>Check the input image in <i>Preview</i> frame</li>
+          </ul>
+      </li>
+      <li>
+        <b>Option 1. Convert to Bitmaps (batch convert to other bitmap formats):</b> 
+          <ul>
+            <li>Select <i>Output Format</i> (PNG, JPEG, BMP, TIFF)</li>
+            <li>Set <i>Quality</i> parameter (for .jpg/.jpeg only).</li>
+            <li>Click <i>Convert</i> to batch convert formats automatically.</li>
+          </ul>
+       </li>
+       <li>
+        <b>Option 2. Convert to Vectors (batch embed bitmaps into vectors):</b> 
+          <ul>
+            <li>Select <i>Output Format</i> (SVG, PDF, EPS, PS)</li>
+            <li>Set <i>DPI</i> parameter (not applicable to .svg).</li>
+            <li>Click <i>Convert</i> to batch convert formats automatically.</li>
+          </ul>
+       </li>
+    </ol>
+
+  <h3>Vector and bitmap conversion</h3>
+  <p>To convert between vector formats (SVG, PDF, EPS, PS) or to bitmap formats (PNG, JPEG, BMP, TIFF):</p>
+    <ol>
+      <li>Navigate to the <i>Vector</i> tab.</li>
+      <li>
+        <b>Input/Output Settings:</b> 
+          <ul>
+            <li>Select <i>input files</i> (multi-select supported)</li>
+            <li>Choose <i>output folder</i>.</li>
+            <li>Check the input image in <i>Preview</i> frame</li>
+          </ul>
+      </li>
+      <li>
+        <b>Tool Check:</b> 
+          <ul>
+            <li>ImBridge relies on the following Python dependencies to process <code>SVG</code> and <code>PDF</code> files. They are already included in <code>requirements.txt</code>. No need to install them separately.</li>
+              <ul>
+                <li><b>cairosvg</b>: A Python library for converting SVG files to PDF, PNG, and other formats.</li>
+                <li><b>PyPDF2</b>: A Python library for reading and analyzing PDF files.</li>
+              </ul>
+
+            <li>The following external tools are also needed to enable vector analysis or conversion. They should be installed and configured separately. Follow the links above to install the required tools. Make sure they are in the <code>$PATH</code> environment variable.</li>
+              <ul>
+                <li><b>Ghostscript</b>: A powerful interpreter for PostScript and PDF files, used for vector/bitmap conversion. Download it from <a href="https://www.ghostscript.com/">https://www.ghostscript.com/</a></li>
+                <li><b>pstoedit</b>: A tool to convert PostScript and PDF graphics to other vector formats such as SVG. Download it from <a href="http://www.pstoedit.net/">http://www.pstoedit.net/</a></li>
+                <li><b>libcairo-2.dll</b>: Part of the Cairo graphics library, which is required for vector graphics processing. Download it from <a href="https://www.cairographics.org/download/">https://www.cairographics.org/download/</a>, or find it in your system folder if you have already installed <a href="https://www.gimp.org/">GIMP</a>.</li>
+              </ul>
+            <li>The Tool Check section in the ImBridge interface will indicate whether these tools are installed and accessible.</li>
+          </ul>
+      </li>
+      <li>
+        <b>Option 1. Analyze Vectors:</b> 
+          <ul>
+            <li>Click <i>Analyze</i> button to analyze the selected vector files.</li>
+            <li>Check <i>Log Frame</i> for analysis results.</li>
+          </ul>
+       </li>
+       <li>
+        <b>Option 2. Convert to Vectors:</b> 
+          <ul>
+            <li>Select <i>Output Format</i> (SVG, PDF, EPS, PS)</li>
+            <li>Click <i>Convert</i> to batch convert formats automatically.</li>
+          </ul>
+       </li>
+       <li>
+        <b>Option 3. Convert to Bitmaps:</b> 
+          <ul>
+            <li>Select <i>Output Format</i> (PNG, JPEG, TIFF)</li>
+            <li>Set <i>DPI</i> parameter.</li>
+            <li>Click <i>Convert</i> to batch convert formats automatically.</li>
+          </ul>
+       </li>
+    </ol>
+  
+  <h3>Resolution enhancement & grayscale</h3>
+  <p>To enhance image resolution or convert to grayscale/binary images:</p>
+    <ol>
+      <li>Navigate to the <i>enhancement</i> tab.</li>
+      <li>
+        <b>Input/Output Settings:</b> 
+          <ul>
+            <li>Select <i>input files</i> (multi-select supported)</li>
+            <li>Choose <i>output folder</i>.</li>
+            <li>Check the input image in <i>Preview</i> frame</li>
+          </ul>
+      </li>
+      <li><b>Option 1. Upscaling</b></li>
+        <ul>
+          <li>Set <i>Scale Factor</i>.</li>
+          <li>Click <i>Upscale & Save</i> for batch processing.</li>
+        </ul>
+      <li><b>Option 2. Grayscale</b></li>
+        <ul>  
+          <li>Click <i>Grayscale & Save</i> for batch processing.</li>
+        </ul>
+      <li><b>Option 3. Vectorization (Use Potrace to convert images to vector format.)</b></li>
+        <ul>
+          <li>Set <i>Output Format</i>.</li>
+          <li>Click <i>Vectorize & Save</i> for batch processing.</li>
+        </ul>
+      <li><b>Tool Check</b></li>
+        <ul>
+        <li>ImBridge relies on <i>Potrace</i> to enable vectorization. It should be installed and configured separately. Follow the links above to install the required tools. Make sure the executable is in the <code>$PATH</code> environment variable.</li>
+              <ul>
+                <li><b>Potrace</b>: A utility for tracing bitmaps and converting them into smooth, scalable vector graphics. Download it from <a href="http://potrace.sourceforge.net/">http://potrace.sourceforge.net/</a></li>
+              </ul>
+        </ul>
+    </ol>
+</ul>
+
+<h2>Parameter & Format Reference</h2>
+<p>ImBridge supports various image formats and parameters. For details, see <a href="image_formats.html">Image Formats & Parameters</a>.</p>
+
+<h2>FAQ & Troubleshooting</h2>
+<ul>
+  <li><b>Q: Why is the converted image blurry or the size incorrect?</b><br>Check DPI settings and output format. For vector to bitmap, set an appropriate resolution.</li>
+  <li><b>Q: Why can't some formats be converted?</b><br>Make sure Ghostscript, pstoedit, Potrace, etc. are installed and in your PATH.</li>
+  <li><b>Q: How to batch process many files?</b><br>You can multi-select input files, or drag files into the input box for automatic batch processing.</li>
+</ul>
+
+<h2>Security & Privacy</h2>
+<ul>
+  <li>All image processing is done locally, nothing is uploaded to the cloud, ensuring data security.</li>
+</ul>
+
+<h2>Special Thanks</h2>
+<ul>
+  <li>Ghostscript: <a href="https://www.ghostscript.com/">https://www.ghostscript.com/</a></li>
+  <li>pstoedit: <a href="http://www.pstoedit.net/">http://www.pstoedit.net/</a></li>
+  <li>Potrace: <a href="http://potrace.sourceforge.net/">http://potrace.sourceforge.net/</a></li>
+  <li>libcairo-2.dll: <a href="https://www.cairographics.org/download/">https://www.cairographics.org/download/</a></li>
+</ul>
+
+<p style="color:#888;font-size:0.95em;">For more help, see the project documentation or contact the developer.</p>
+</body>
+</html>
+</body>
+</html>

@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+functions.md
+principles.md
+.jpg
+.png
+.gif
+.pdf
+output/
