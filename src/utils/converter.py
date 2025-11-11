@@ -17,6 +17,17 @@ import json
 import importlib
 
 
+def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
+    """Remove alpha channel from an image by compositing onto a background color."""
+    if img.mode == "RGBA":
+        background = Image.new("RGB", img.size, bg_color)
+        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+        return background
+    elif img.mode != "RGB" and img.mode != "L":
+        return img.convert("RGB")
+    return img
+
+
 def bitmap_to_bitmap(
     in_path: str,
     out_path: str,
@@ -81,6 +92,7 @@ def embed_bitmap_to_vector(
             c.save()
         elif fmt == ".eps":
             # EPS embedding can use Pillow to save as EPS, ensure mode is RGB or L
+            img = remove_alpha_channel(img)
             img.save(out_path, format="EPS", dpi=(dpi, dpi))
         else:
             raise RuntimeError(f"Unsupported vector format: {fmt}")

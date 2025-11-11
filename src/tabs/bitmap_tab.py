@@ -70,7 +70,7 @@ class BitmapTab(BaseTab):
             text="Convert",
             command=lambda: self.batch_convert(
                 mode="b2b",
-                files_list=self.io_frame.files_var.get().strip().split("\n"),
+                file_list=self.io_frame.files_var.get().strip().split("\n"),
                 out_dir=self.io_frame.out_dir_var.get(),
                 out_ext=self.bitmap_fmt.get(),
                 quality=self.quality_var.get(),
@@ -116,7 +116,7 @@ class BitmapTab(BaseTab):
             text="Convert",
             command=lambda: self.batch_convert(
                 mode="b2v",
-                files_list=self.io_frame.files_var.get().strip().split("\n"),
+                file_list=self.io_frame.files_var.get().strip().split("\n"),
                 out_dir=self.io_frame.out_dir_var.get(),
                 out_ext=self.vector_fmt.get(),
                 dpi=self.dpi_var.get(),

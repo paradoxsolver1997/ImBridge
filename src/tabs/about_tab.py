@@ -27,8 +27,8 @@ class AboutTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="About FiBridge",
-            comment_text="A secure, local bridge for file and data sharing between PC and mobile devices.",
+            title_text="About ImBridge",
+            comment_text="A local tool for batch image/document conversion and enhancement.",
         )
         self.title_frame.pack(fill="x", padx=(8, 8), pady=(8, 4))
 
@@ -96,6 +96,17 @@ class AboutTab(BaseTab):
         self.row_3_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
         self.render_hyperlink_label(self.row_3_link)
         self.row_3_link.bind("<Button-1>", lambda e: webbrowser.open("http://potrace.sourceforge.net/"))
+
+        # Potrace
+        self.row_4 = ttk.Frame(self.thanks_frame)
+        self.row_4.pack(side="top", fill="x", padx=8, pady=(2, 4))
+        self.row_4_label = ttk.Label(self.row_4, text="libcairo-2.dll:")
+        self.row_4_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
+        self.row_4_link = ttk.Label(self.row_4, text="https://www.cairographics.org/download/", foreground="blue", cursor="hand2")
+        self.row_4_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
+        self.render_hyperlink_label(self.row_4_link)
+        self.row_4_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.cairographics.org/download/"))
+
 
         self.title_frame.pack(fill="x", padx=(8, 8), pady=(2, 2))
         self.help_frame = ttk.LabelFrame(
