@@ -29,7 +29,6 @@ PYINSTALLER_OPTS = [
     "--add-data=requirements.txt;.",
     "--add-data=configs;configs",
     "--add-data=docs;docs",
-    "--add-data=output;output",
 ]
 
 # Build command
