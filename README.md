@@ -1,5 +1,9 @@
 # ImBridge 🎛️🖼️
 
+![License](https://img.shields.io/github/license/paradoxsolver1997/ImBridge)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+
 **ImBridge** is a lightweight desktop app for high‑quality image processing: **batch bitmap conversion**, **vector conversion**, and **image enhancement**. It focuses on local, fast, and reliable workflows powered by Python and a clean Tkinter UI.
 
 ## ✨ Features
