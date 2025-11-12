@@ -49,10 +49,10 @@ class AboutTab(BaseTab):
         self.license_row.pack(side="top", fill="x", padx=8, pady=(2, 2))
         self.license_label = ttk.Label(self.license_row, text="License: ")
         self.license_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
-        self.license_link = ttk.Label(self.license_row, text="MIT License", foreground="blue", cursor="hand2")
+        self.license_link = ttk.Label(self.license_row, text="Mozilla Public License Version 2.0", foreground="blue", cursor="hand2")
         self.license_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
         self.render_hyperlink_label(self.license_link)
-        self.license_link.bind("<Button-1>", lambda e: self.show_license())
+        self.license_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.mozilla.org/en-US/MPL/2.0/"))
 
         self.project_row = ttk.Frame(self.info_frame)
         self.project_row.pack(side="top", fill="x", padx=8, pady=(2, 2))
