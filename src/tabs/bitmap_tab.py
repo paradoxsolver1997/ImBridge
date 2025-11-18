@@ -18,15 +18,14 @@ class BitmapTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Bitmap Format Conversion",
+            title_text="Bitmap Format Conversion (Batch)",
             comment_text="Convert bitmaps to bitmaps or vectors",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
         self.io_frame = InputOutputFrame(
             self,
-            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.heic;*.heif;*.bmp;*.tiff")],
-            process_func=self.file_preview,
+            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.heic;*.heif;*.bmp;*.tiff")]
         )
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 

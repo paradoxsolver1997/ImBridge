@@ -21,15 +21,14 @@ class VectorTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Vector Format Conversion",
+            title_text="Vector Format Conversion (Batch)",
             comment_text="Convert vectors to vectors or bitmaps",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
         self.io_frame = InputOutputFrame(
             self,
-            filetypes=[("Vector", "*.svg;*.pdf;*.eps;*.ps")],
-            process_func=self.file_preview,
+            filetypes=[("Vector", "*.svg;*.pdf;*.eps;*.ps")]
         )
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 

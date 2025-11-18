@@ -20,15 +20,14 @@ class EnhanceTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Upscale and Enhance Images",
-            comment_text="Enhance the quality of your images",
+            title_text="Image Workshop",
+            comment_text="Quick processing of your image",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
         self.io_frame = InputOutputFrame(
             self,
-            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff")],
-            process_func=self.file_preview,
+            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff")]
         )
         self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
 

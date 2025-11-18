@@ -4,11 +4,12 @@ import os
 import logging
 from src.frames.base_frame import BaseFrame
 import subprocess
+from src.frames.file_details_frame import FileDetailsFrame
 
 class InputOutputFrame(BaseFrame):
     
     def __init__(
-        self, parent, filetypes=None, process_func=lambda x: None, *args, **kwargs
+        self, parent, filetypes=None, *args, **kwargs
     ):
         super().__init__(parent, *args, **kwargs)
         # Input files
@@ -21,9 +22,6 @@ class InputOutputFrame(BaseFrame):
         input_row = ttk.Frame(frame)
         input_row.pack(fill="x", padx=0, pady=(4, 2))
         self.files_var = tk.StringVar()
-        self.files_var.trace_add(
-            "write", lambda *args: self.on_files_var_changed(process_func)
-        )
         ttk.Label(input_row, text="Input files:").pack(
             side="left", padx=(6, 8), anchor="w"
         )
@@ -41,6 +39,10 @@ class InputOutputFrame(BaseFrame):
                 title="Select files",
             ),
         ).pack(side="left", padx=4)
+        ttk.Button(
+            input_row, text="File Details...", command=lambda: self.open_file_list()
+        ).pack(side="left", padx=4)
+
         # Output directory
         output_row = ttk.Frame(frame)
         output_row.pack(fill="x", padx=0, pady=(2, 4))
@@ -109,7 +111,31 @@ class InputOutputFrame(BaseFrame):
         except Exception as e:
             self.log(f"Failed to open folder:\n{e}", logging.ERROR)
 
-    def on_files_var_changed(self, process_func):
-        file_list = self.files_var.get().strip().split("\n")
-        if file_list and file_list[0]:
-            process_func(file_list[0])
+
+    def open_file_list(self):
+
+        self.list_window = tk.Toplevel(self)
+        self.list_window.title("文件详细信息")
+        self.list_window.geometry(self.set_list_geometry())
+
+        self.file_details_frame = FileDetailsFrame(
+            self.list_window,
+            file_list = self.files_var.get().strip().split("\n"),
+        )
+        self.file_details_frame.pack(fill="both", expand=True)
+        # Initialize size, scaling, and scrollbars
+        self.log("File details frame created.", logging.INFO)
+
+
+    def set_list_geometry(self):
+        main_x = self.winfo_toplevel().winfo_x()
+        main_y = self.winfo_toplevel().winfo_y()
+        main_w = self.winfo_toplevel().winfo_width()
+        main_h = self.winfo_toplevel().winfo_height()
+        popup_w = 400
+        popup_h = 400
+        # Make the popup window stick to the right side of the main window
+        popup_x = main_x + main_w
+        popup_y = main_y
+
+        return f"{popup_w}x{popup_h}+{popup_x}+{popup_y}"

@@ -51,52 +51,7 @@ class BaseTab(BaseFrame):
     def build_content(self):
         pass
 
-    def file_preview(self, img_path):
-        try:
-            ext = os.path.splitext(img_path)[1].lower()
-            # Support vector preview: svg/pdf/eps/ps
-
-            if ext in (".svg", ".pdf", ".eps", ".ps"):
-                self.log("Vector file detected, converting to bitmap for preview...")
-                with tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                ) as tmp_png:
-                    png_path = tmp_png.name
-                try:
-                    converter.vector_to_bitmap(img_path, png_path, dpi=60)
-                    with Image.open(png_path) as img:
-                        img.thumbnail((100, 100))
-                except Exception as ve:
-                    raise
-                finally:
-                    if os.path.exists(png_path):
-                        os.remove(png_path)
-            else:
-                img = Image.open(img_path)
-            self.log("Displaying preview image...")
-            self.image_preview(img)
-        except Exception as e:
-            self.winfo_toplevel().clear_preview()
-            if self.preview_frame:
-                tk.Label(self.preview_frame, text="No Preview Available").pack(
-                    expand=True
-                )
-
-    def image_preview(self, img):
-        """
-        Display imgtk in preview_frame and keep reference to prevent GC.
-        """
-        self.winfo_toplevel().clear_preview()
-        if self.preview_frame:
-            try:
-                img.thumbnail((100, 100))
-                imgtk = ImageTk.PhotoImage(img)
-                label = tk.Label(self.preview_frame, image=imgtk)
-                label.image = imgtk
-                label.pack(expand=True)
-            except Exception as e:
-                tk.Label(self.preview_frame, text="Preview failed").pack(expand=True)
-
+    
     def batch_convert(self, mode, file_list, out_dir=None, out_ext=None, **kwargs):
         """
         General batch conversion template.
@@ -114,9 +69,8 @@ class BaseTab(BaseFrame):
             return
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
+        self.preview_frame.clear_file_queue()
         for f in file_list:
-            if hasattr(self, "file_preview"):
-                self.file_preview(f)
             base = os.path.splitext(os.path.basename(f))[0]
             if mode == "b2v":
                 out_path = os.path.join(out_dir, base + out_ext)
@@ -190,5 +144,7 @@ class BaseTab(BaseFrame):
                         )
             else:
                 raise ValueError("Unsupported conversion mode")
+
+            self.preview_frame.add_file_to_queue(out_path)
 
         self.log("[Task Completed]", logging.INFO)

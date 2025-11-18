@@ -5,6 +5,7 @@ import os
 
 from src.utils.logger import Logger
 
+from src.frames.preview_frame import PreviewFrame
 from src.tabs.about_tab import AboutTab
 from src.tabs.bitmap_tab import BitmapTab
 from src.tabs.vector_tab import VectorTab
@@ -40,34 +41,27 @@ class App(tk.Tk):
         )
         self.build_content()
 
+
     def build_content(self):
-
-        # Main frame, divided into upper and lower parts, using grid to ensure log area is always at the bottom
+        # Main frame
         main_frame = ttk.Frame(self)
-        main_frame.grid(row=0, column=0, sticky="nsew")
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=0)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=0)
+        main_frame.pack(fill="both", expand=True)
 
+        # Notebook (tabs)
         nb = ttk.Notebook(main_frame)
-        nb.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        nb.pack(side="top", fill="both", expand=True)
         nb.bind("<<NotebookTabChanged>>", self.on_tab_changed)
 
-        # Log window and preview area are placed side by side in the bottom row of main_frame
+        # Bottom area: log and preview side by side
         bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        bottom_frame.pack(side="bottom", fill="x")
 
         log_frame = ttk.LabelFrame(bottom_frame, text="Log Output")
-        log_frame.grid(row=1, column=0, sticky="nsew")
+        log_frame.pack(side="left", fill="both", expand=True)
 
-        self.preview_frame = ttk.LabelFrame(
-            bottom_frame, text="Preview", width=160, height=160, relief="groove"
-        )
-        self.preview_frame.grid(row=1, column=1, sticky="nsew", padx=0, pady=0)
-        # self.preview_frame.pack(side='left', padx=2, pady=2)
+        self.preview_frame = PreviewFrame(log_frame, title="Preview", width=160, height=160)
+        self.preview_frame.pack(side="right", fill="y", padx=0, pady=0, expand=False)
+
         # Log text area with scrollbar
         log_scroll = ttk.Scrollbar(log_frame, orient="vertical")
         log_text = tk.Text(
@@ -81,10 +75,6 @@ class App(tk.Tk):
         log_scroll.config(command=log_text.yview)
         log_scroll.pack(side="right", fill="y")
         self.logger.set_gui_widget(log_text)
-        bottom_frame.columnconfigure(
-            0, weight=1, minsize=20
-        )  # log_frame automatically expands, minimum width 200
-        bottom_frame.columnconfigure(1, weight=0)  # preview_frame width fixed
 
         # Create and add tabs
         bitmap_tab = BitmapTab(nb)
@@ -92,16 +82,13 @@ class App(tk.Tk):
         vector_tab = VectorTab(nb)
         nb.add(vector_tab, text="  Vector  ")
         enhance_tab = EnhanceTab(nb)
-        nb.add(enhance_tab, text="  Enhancement  ")
+        nb.add(enhance_tab, text="  Workshop  ")
         about_tab = AboutTab(nb)
         nb.add(about_tab, text="  About  ")
 
         nb.select(0)  # Enable Bitmap by default
 
     def on_tab_changed(self, event=None):
-        self.clear_preview()
+        self.preview_frame.clear_preview()
 
-    def clear_preview(self):
-        if self.preview_frame:
-            for w in self.preview_frame.winfo_children():
-                w.destroy()
+    
