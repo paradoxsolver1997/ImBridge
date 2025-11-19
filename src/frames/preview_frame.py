@@ -83,23 +83,28 @@ class PreviewFrame(BaseFrame):
         self.clear_preview()
         self._update_page_label()
 
-    def show_image(self, img):
-        """
-        预留：显示PIL.Image对象的缩略图
-        """
-        """
-        Display imgtk in preview_frame and keep reference to prevent GC.
-        """
-        # 仅清理内容区域，保留容器
+    def show_image(self, image):
         for w in self.title_frame.winfo_children():
             w.destroy()
         try:
-            img.thumbnail((100, 100))
+            img = image.copy()
+            orig_size = img.size
+            # 计算缩放比例，保持比例填满
+            frame_w, frame_h = self.width, self.height - 60  # 留出按钮区高度
+            scale = min(frame_w / img.width, frame_h / img.height)
+            new_size = (int(img.width * scale), int(img.height * scale))
+            img = img.resize(new_size, Image.LANCZOS)
+            # 居中裁剪
+            left = (img.width - frame_w) // 2
+            top = (img.height - frame_h) // 2
+            img = img.crop((left, top, left + frame_w, top + frame_h))
             imgtk = ImageTk.PhotoImage(img)
             self.build_buttons()
             label = tk.Label(self.title_frame, image=imgtk)
             label.image = imgtk
-            label.pack(expand=True)
+            label.pack(expand=True, fill="both")
+            size_label = tk.Label(self.title_frame, text=f"{orig_size[0]}x{orig_size[1]}", anchor="ne", bg="#f0f0f0")
+            size_label.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
             self._update_page_label()
         except Exception as e:
             tk.Label(self.title_frame, text="Preview failed").pack(expand=True)
@@ -153,6 +158,8 @@ class PreviewFrame(BaseFrame):
             self._queue_index -= 1
             self.show_file(self.__file_queue[self._queue_index])
             self._update_page_label()
+            # 发送自定义翻页事件
+            self.event_generate('<<PreviewPageChanged>>', when='tail')
 
     def next_page(self):
         """
@@ -164,5 +171,7 @@ class PreviewFrame(BaseFrame):
             self._queue_index += 1
             self.show_file(self.__file_queue[self._queue_index])
             self._update_page_label()
+            # 发送自定义翻页事件
+            self.event_generate('<<PreviewPageChanged>>', when='tail')
 
         

@@ -105,8 +105,7 @@ class BaseTab(BaseFrame):
                     converter.vector_to_vector(
                         in_path=f, out_path=out_path, log_fun=self.log
                     )
-            elif mode == "analyze":
-                converter.vector_analyzer(f, log_fun=self.log)
+                '''
             elif mode == "upscale":
                 out_path = os.path.join(out_dir, 'upscaled_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
@@ -116,6 +115,7 @@ class BaseTab(BaseFrame):
                         scale_factor=kwargs.get('scale_factor', 2),
                         log_fun=self.log,
                     )
+                '''
             elif mode == "grayscale":
                 out_path = os.path.join(out_dir, 'grayscale_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
@@ -123,6 +123,15 @@ class BaseTab(BaseFrame):
                         f, 
                         out_path=out_path, 
                         log_fun=self.log
+                    )
+            elif mode == "binarize":
+                out_path = os.path.join(out_dir, 'binarize_' + os.path.basename(f))
+                if confirm_overwrite(out_path):
+                    enhancement.grayscale_image(
+                        f, 
+                        out_path=out_path, 
+                        log_fun=self.log,
+                        binarize=True
                     )
             elif mode == "potrace":
                 if os.path.getsize(f) > 200 * 1024:
@@ -143,8 +152,9 @@ class BaseTab(BaseFrame):
                             logging.WARNING,
                         )
             else:
+                out_path = None
                 raise ValueError("Unsupported conversion mode")
-
-            self.preview_frame.add_file_to_queue(out_path)
+            if out_path and os.path.exists(out_path):
+                self.preview_frame.add_file_to_queue(out_path)
 
         self.log("[Task Completed]", logging.INFO)

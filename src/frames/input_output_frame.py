@@ -9,11 +9,11 @@ from src.frames.file_details_frame import FileDetailsFrame
 class InputOutputFrame(BaseFrame):
     
     def __init__(
-        self, parent, filetypes=None, *args, **kwargs
+        self, parent, title='', filetypes=None, multi=True, *args, **kwargs
     ):
         super().__init__(parent, *args, **kwargs)
         # Input files
-
+        self.title = title
         frame = ttk.LabelFrame(
             self, text="Input/Output Settings", style="Bold.TLabelframe"
         )
@@ -22,6 +22,8 @@ class InputOutputFrame(BaseFrame):
         input_row = ttk.Frame(frame)
         input_row.pack(fill="x", padx=0, pady=(4, 2))
         self.files_var = tk.StringVar()
+        self.files_var.trace_add("write", self.on_files_var_changed)
+            
         ttk.Label(input_row, text="Input files:").pack(
             side="left", padx=(6, 8), anchor="w"
         )
@@ -35,7 +37,7 @@ class InputOutputFrame(BaseFrame):
                 var=self.files_var,
                 filetypes=filetypes or [("All Files", "*.*")],
                 max_size_mb=None,
-                multi=True,
+                multi=multi,
                 title="Select files",
             ),
         ).pack(side="left", padx=4)
@@ -115,7 +117,8 @@ class InputOutputFrame(BaseFrame):
     def open_file_list(self):
 
         self.list_window = tk.Toplevel(self)
-        self.list_window.title("文件详细信息")
+        parent_title = self.winfo_toplevel().title() if hasattr(self.winfo_toplevel(), 'title') else ''
+        self.list_window.title(f"文件详细信息 - {self.title}")
         self.list_window.geometry(self.set_list_geometry())
 
         self.file_details_frame = FileDetailsFrame(
@@ -133,9 +136,35 @@ class InputOutputFrame(BaseFrame):
         main_w = self.winfo_toplevel().winfo_width()
         main_h = self.winfo_toplevel().winfo_height()
         popup_w = 400
-        popup_h = 400
+        popup_h = 600
         # Make the popup window stick to the right side of the main window
         popup_x = main_x + main_w
         popup_y = main_y
 
         return f"{popup_w}x{popup_h}+{popup_x}+{popup_y}"
+    
+    def on_files_var_changed(self, *args):
+        # 当文件列表变化时，若详情窗口存在且未销毁，则刷新
+        if hasattr(self, "file_details_frame") and hasattr(self, "list_window"):
+            if self.list_window.winfo_exists():
+                # 重新加载文件列表
+                file_list = self.files_var.get().strip().split("\n")
+                # 重新构建 file_details_frame
+                self.file_details_frame.destroy()
+                self.file_details_frame = FileDetailsFrame(
+                    self.list_window,
+                    file_list=file_list,
+                )
+                self.file_details_frame.pack(fill="both", expand=True)
+                self.log("File details frame refreshed due to file list change.", logging.INFO)
+
+    def load_file_list(self):
+        try:
+            file_list = [f for f in self.files_var.get().strip().split("\n") if f.strip()]
+            if not file_list or not all(os.path.isfile(f) for f in file_list):
+                self.logger.error("No valid input file selected.")
+                return
+            return file_list
+        except Exception as e:
+            self.logger.error(f"Failed to open image: {e}")
+            return

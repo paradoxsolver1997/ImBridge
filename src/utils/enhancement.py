@@ -96,17 +96,33 @@ def enhance_image(
         log_fun("[enhance] done")
 
 
-def upscale_image(
-    in_path: str, out_path: str, scale_factor: float = 2.0, log_fun=None
+def scale_image(
+    img: Image.Image, scale_factor: float = 2.0, log_fun=None, **kwargs
 ) -> None:
-
-    img = Image.open(in_path)
-
+    
     width, height = img.size
     new_width = int(width * scale_factor)
     new_height = int(height * scale_factor)
+    if scale_factor > 1.0: 
+        img_smooth = resize_image(img, new_width, new_height, enhance_flag=True, log_fun=log_fun, **kwargs)
+    elif scale_factor < 1.0:
+        img_smooth = resize_image(img, new_width, new_height, log_fun=log_fun, **kwargs)
+    else:
+        img_smooth = img.copy()
+    return img_smooth
+
+
+def resize_image(
+    img: Image.Image,
+    new_width: int,
+    new_height: int,
+    enhance_flag=False,
+    log_fun=None,
+    **kwargs
+) -> None:
+
     if log_fun:
-        log_fun(f"[enhance] upscale to: {(new_width, new_height)}, factor: {scale_factor}")
+        log_fun(f"[enhance] resize to: {(new_width, new_height)}")
 
     # Separate alpha channel
     if img.mode == "RGBA":
@@ -114,33 +130,32 @@ def upscale_image(
         alpha = img.getchannel("A").resize(
             (new_width, new_height), Image.Resampling.LANCZOS
         )
-        img_resized = rgb.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        img_2 = rgb.resize((new_width, new_height), Image.Resampling.LANCZOS)
     else:
-        img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        img_2 = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         alpha = None
 
-    if log_fun:
-        log_fun("[enhance] sharpen")
-    enhancer = ImageEnhance.Sharpness(img_resized)
-    img_sharpened = enhancer.enhance(5.0)
-
-    if log_fun:
-        log_fun("[enhance] gaussian blur")
-    img_smooth = img_sharpened.filter(ImageFilter.GaussianBlur(radius=1))
-    if log_fun:
-        log_fun("[enhance] median filter")
-    img_smooth = img_smooth.filter(ImageFilter.MedianFilter(size=3))
-
-    if log_fun:
-        log_fun("[enhance] enhance contrast")
-
-    # Merge alpha channel
-    if alpha is not None:
-        img_smooth = img_smooth.convert("RGBA")
-        img_smooth.putalpha(alpha)
-    if log_fun:
-        log_fun("Upscale finished.")
-    img_smooth.save(out_path)
+    if enhance_flag:
+        if log_fun:
+            log_fun("[enhance] sharpen")
+        enhancer = ImageEnhance.Sharpness(img_2)
+        img_2 = enhancer.enhance(kwargs.get('sharpness', 5.0))
+        if log_fun:
+            log_fun("[enhance] gaussian blur")
+        img_2 = img_2.filter(ImageFilter.GaussianBlur(radius=kwargs.get('blur_radius', 1.0)))
+        if log_fun:
+            log_fun("[enhance] median filter")
+        img_2 = img_2.filter(ImageFilter.MedianFilter(size=kwargs.get('median_size', 3)))
+        if log_fun:
+            log_fun("[enhance] enhance contrast")
+        # Merge alpha channel
+        if alpha is not None:
+            img_2 = img_2.convert("RGBA")
+            img_2.putalpha(alpha)
+        if log_fun:
+            log_fun("Upscale finished.")
+    
+    return img_2
 
 
 def save_with_enhance(img: Image.Image, filepath: str, dpi: int = 300):

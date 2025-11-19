@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from src.frames.base_frame import BaseFrame
+from src.frames.preview_frame import PreviewFrame
 import time
 import os
 from PIL import Image
+from src.utils.analyzer import vector_analyzer
 from PyPDF2 import PdfReader
 # 缓存元数据，避免重复I/O
 
@@ -17,7 +19,6 @@ class FileDetailsFrame(BaseFrame):
         self.build_contents()
 
     def build_contents(self):
-
         # 主体frame
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True)
@@ -30,21 +31,21 @@ class FileDetailsFrame(BaseFrame):
             self.tree.column(col, anchor="w", width=50 if col=="大小 (KB)" else 150)
         self.tree.pack(fill="x", padx=10, pady=(10, 2))
 
-
         # 详情Frame
         self.detail_frame = ttk.Frame(main_frame)
-        self.detail_frame.pack(fill="both", expand=True, padx=10, pady=(0, 4))
+        self.detail_frame.pack(fill="x", expand=False, padx=10, pady=(0, 4))
 
-        # 预览Frame（预留）
-        self.preview_frame = ttk.Frame(main_frame)
+        # 预览Frame
+        self.preview_frame = PreviewFrame(main_frame, title="Preview", width=160, height=160)
         self.preview_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        # 绑定自定义翻页事件
+        self.preview_frame.bind('<<PreviewPageChanged>>', self._on_preview_page_changed)
 
         # 关闭按钮
         btn = ttk.Button(main_frame, text="关闭", command=self.list_window.destroy)
         btn.pack(pady=(0, 6), anchor="e")
 
         # 获取文件列表
-        
         file_list = [f for f in self.file_list if f]
 
         # 填充Treeview
@@ -59,12 +60,33 @@ class FileDetailsFrame(BaseFrame):
             else:
                 self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "不存在", "-"))
 
+        # --- 预览Frame队列初始化 ---
+        self.preview_frame.clear_file_queue()
+        for f in file_list:
+            if os.path.isfile(f):
+                self.preview_frame.add_file_to_queue(f)
+
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
 
         # 默认选中第一个
         if file_list:
             self.tree.selection_set(file_list[0])
             self.show_details(file_list[0])
+            # 预览Frame同步到第一个文件
+            self._sync_preview_to_file(file_list[0])
+    
+    def _sync_preview_to_file(self, file_path):
+        """
+        让preview_frame的queue_index指向file_path，并显示该文件
+        """
+        try:
+            queue = list(self.preview_frame._PreviewFrame__file_queue)
+            idx = queue.index(file_path)
+            self.preview_frame._queue_index = idx
+            self.preview_frame.show_file(file_path)
+            self.preview_frame._update_page_label()
+        except Exception:
+            pass
 
     # 详情显示函数
     def sniff_type(self, path):
@@ -88,6 +110,7 @@ class FileDetailsFrame(BaseFrame):
 
     def read_image_meta(self, path):
         meta = {}
+        '''
         try:
             fsize = os.path.getsize(path)
             meta['文件大小'] = f'{fsize // 1024} KB'
@@ -96,6 +119,7 @@ class FileDetailsFrame(BaseFrame):
         except Exception as e:
             meta['文件大小'] = '读取失败'
             meta['修改时间'] = '-'
+        '''
         typ, cat = self.sniff_type(path)
         meta['类型'] = typ
         meta['类别'] = cat
@@ -120,21 +144,65 @@ class FileDetailsFrame(BaseFrame):
                 meta['像素尺寸'] = '读取失败'
                 meta['DPI'] = 'N/A'
                 meta['物理尺寸'] = '-'
-        elif cat == 'Vector' and typ == 'PDF':
+        elif cat == 'Vector':
+            # 使用矢量分析器获取 Vector/Mixed/Raster 细节
             try:
-                reader = PdfReader(path)
-                page = reader.pages[0]
-                width_pt = float(page.mediabox.width)
-                height_pt = float(page.mediabox.height)
-                width_in = width_pt/72
-                height_in = height_pt/72
-                meta['像素尺寸'] = 'N/A'
-                meta['DPI'] = 'N/A'
-                meta['物理尺寸'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
+                analysis = vector_analyzer(path)
             except Exception:
-                meta['物理尺寸'] = '-'
-                meta['像素尺寸'] = 'N/A'
-                meta['DPI'] = 'N/A'
+                analysis = None
+
+            if analysis:
+                ana_type = analysis.get('type', 'unknown').title()
+                if ana_type in ('Vector','Mixed','Raster'):
+                    meta['类别'] = ana_type
+                # 路径与栅格统计
+                if 'num_paths' in analysis:
+                    meta['路径数量'] = analysis.get('num_paths', 0)
+                if ana_type in ('Mixed','Raster'):
+                    num_images = analysis.get('num_images', 0)
+                    meta['栅格图数量'] = num_images
+                    if num_images:
+                        sizes = []
+                        for iminfo in analysis.get('images', []):
+                            rw = iminfo.get('real_width') or iminfo.get('width') or '?'
+                            rh = iminfo.get('real_height') or iminfo.get('height') or '?'
+                            sizes.append(f"{rw}x{rh}")
+                        meta['栅格图尺寸'] = ', '.join(sizes) if sizes else '-'
+                # PDF 物理尺寸（无论 Vector/Mixed/Raster皆可给出页面物理尺寸）
+                if typ == 'PDF':
+                    try:
+                        reader = PdfReader(path)
+                        page = reader.pages[0]
+                        width_pt = float(page.mediabox.width)
+                        height_pt = float(page.mediabox.height)
+                        width_in = width_pt/72
+                        height_in = height_pt/72
+                        meta.setdefault('像素尺寸', 'N/A')
+                        meta.setdefault('DPI', 'N/A')
+                        meta['物理尺寸'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
+                    except Exception:
+                        meta['物理尺寸'] = meta.get('物理尺寸', '-')
+                else:
+                    meta.setdefault('像素尺寸', 'N/A')
+                    meta.setdefault('DPI', 'N/A')
+                    meta.setdefault('物理尺寸', '-')
+            else:
+                # 分析失败时的回退：尽量提供PDF物理尺寸
+                if typ == 'PDF':
+                    try:
+                        reader = PdfReader(path)
+                        page = reader.pages[0]
+                        width_pt = float(page.mediabox.width)
+                        height_pt = float(page.mediabox.height)
+                        width_in = width_pt/72
+                        height_in = height_pt/72
+                        meta['像素尺寸'] = 'N/A'
+                        meta['DPI'] = 'N/A'
+                        meta['物理尺寸'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
+                    except Exception:
+                        meta['物理尺寸'] = '-'
+                        meta['像素尺寸'] = 'N/A'
+                        meta['DPI'] = 'N/A'
         else:
             meta['像素尺寸'] = 'N/A'
             meta['DPI'] = 'N/A'
@@ -162,9 +230,24 @@ class FileDetailsFrame(BaseFrame):
             ttk.Label(row, text=f"{k}: ", font=("TkDefaultFont", 10, "bold")).pack(side="left", anchor="w")
             ttk.Label(row, text=str(v), font=("TkDefaultFont", 10)).pack(side="left", anchor="w")
 
+        # 详情面板刷新时，同步预览Frame到当前文件
+        self._sync_preview_to_file(path)
+
     # 绑定选中事件
     def on_select(self, event):
         sel = self.tree.selection()
         if sel:
             self.show_details(sel[0])
     
+
+    def _on_preview_page_changed(self, event):
+        # 只响应自身preview_frame发出的事件
+        if event.widget is not self.preview_frame:
+            return
+        queue = list(self.preview_frame._PreviewFrame__file_queue)
+        idx = self.preview_frame._queue_index
+        if 0 <= idx < len(queue):
+            file_path = queue[idx]
+            # 高亮Treeview对应项
+            self.tree.selection_set(file_path)
+            self.tree.see(file_path)

@@ -8,12 +8,12 @@ from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 
 
-class EnhanceTab(BaseTab):
+class ToolTab(BaseTab):
     def __init__(self, parent, title=None):
         super().__init__(parent, title=title)
 
         self._preview_imgtk = None
-        self.output_dir = os.path.join(self.output_dir, "enhance_output")
+        self.output_dir = os.path.join(self.output_dir, "ink_output")
         self.build_content()
 
     def build_content(self):

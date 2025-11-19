@@ -25,6 +25,7 @@ class BitmapTab(BaseTab):
 
         self.io_frame = InputOutputFrame(
             self,
+            title='Bitmap',
             filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.heic;*.heif;*.bmp;*.tiff")]
         )
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")

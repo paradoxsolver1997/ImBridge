@@ -58,11 +58,12 @@ class VectorTab(BaseTab):
         row_frame = ttk.Frame(self)
         row_frame.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
-
+        '''
         frm_1 = ttk.LabelFrame(
             row_frame, text="Option 1. Analyze Vectors", style="Bold.TLabelframe"
         )
         frm_1.pack(side="left", padx=(6, 8), pady=(4, 4), fill="both", expand=True)
+        
         analyze_row = ttk.Frame(frm_1)
         analyze_row.pack(fill="x", padx=0, pady=(8, 8))
         ttk.Button(
@@ -73,7 +74,7 @@ class VectorTab(BaseTab):
                 file_list=self.io_frame.files_var.get().strip().split("\n")
             ),
         ).pack(side="left", padx=8)
-
+        '''
         frm_2 = ttk.LabelFrame(
             row_frame, text="Option 2. Convert to Vectors", style="Bold.TLabelframe"
         )

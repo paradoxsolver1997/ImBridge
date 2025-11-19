@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+from src.frames.base_frame import BaseFrame
 
 
-class LabeledValidatedEntry(ttk.Frame):
+class LabeledValidatedEntry(BaseFrame):
     """
     A Widget Integrating Label + Entry + Validation + Enable Logic.
     Usage:

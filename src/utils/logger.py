@@ -55,11 +55,15 @@ class Logger:
     def info(self, msg):
         self.logger.info(msg)
 
-    def warning(self, msg):
+    def warning(self, msg, messagebox_flag=True):
         self.logger.warning(msg)
+        if messagebox_flag:
+            messagebox.showwarning("Warning", str(msg))
 
-    def error(self, msg):
+    def error(self, msg, messagebox_flag=False):
         self.logger.error(msg)
+        if messagebox_flag:
+            messagebox.showerror("Error", str(msg))
 
     def debug(self, msg):
         self.logger.debug(msg)
@@ -69,24 +73,3 @@ class Logger:
 
     def get_logger(self):
         return self.logger
-
-    def log(
-        self, msg, level=logging.INFO, messagebox_flag=False, messagebox_title=None
-    ):
-        # Only show message box for ERROR and above levels
-        if level >= logging.ERROR and messagebox_flag:
-            messagebox.showerror(messagebox_title or "Error", str(msg))
-        elif level == logging.WARNING and messagebox_flag:
-            messagebox.showwarning(messagebox_title or "Warning", str(msg))
-
-        # Call different member methods based on level
-        if level >= logging.CRITICAL:
-            self.logger.critical(msg)
-        elif level >= logging.ERROR:
-            self.error(msg)
-        elif level >= logging.WARNING:
-            self.warning(msg)
-        elif level >= logging.INFO:
-            self.info(msg)
-        else:
-            self.debug(msg)
