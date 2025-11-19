@@ -12,6 +12,7 @@ from src.tabs.vector_tab import VectorTab
 from src.tabs.ink_tab import InkTab
 from src.tabs.resize_tab import ResizeTab
 from src.tabs.tool_tab import ToolTab
+from src.tabs.resize_vector_tab import ResizeVectorTab
 
 
 def init_styles():
@@ -87,6 +88,8 @@ class App(tk.Tk):
         nb.add(enhance_tab, text="  Workshop  ")
         resize_tab = ResizeTab(nb)
         nb.add(resize_tab, text="  Resize & Crop  ")
+        resize_vector_tab = ResizeVectorTab(nb)
+        nb.add(resize_vector_tab, text="  Resize Vector  ")
         tool_tab = ToolTab(nb)
         nb.add(tool_tab, text="  External Tools★  ")
         about_tab = AboutTab(nb)

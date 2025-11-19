@@ -117,7 +117,6 @@ class InputOutputFrame(BaseFrame):
     def open_file_list(self):
 
         self.list_window = tk.Toplevel(self)
-        parent_title = self.winfo_toplevel().title() if hasattr(self.winfo_toplevel(), 'title') else ''
         self.list_window.title(f"文件详细信息 - {self.title}")
         self.list_window.geometry(self.set_list_geometry())
 

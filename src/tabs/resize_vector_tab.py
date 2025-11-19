@@ -10,7 +10,7 @@ from src.frames.title_frame import TitleFrame
 from PIL import Image
 
 
-class ResizeTab(BaseTab):
+class ResizeVectorTab(BaseTab):
 
     def __init__(self, parent, title=None):
         super().__init__(parent, title=title)
@@ -33,15 +33,10 @@ class ResizeTab(BaseTab):
         self.io_frame = InputOutputFrame(
             self,
             title="Resize Input/Output",
-            filetypes=[
-                ("Images & Vectors", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.svg;*.pdf;*.eps;*.ps"),
-                ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff"),
-                ("Vectors", "*.svg;*.pdf;*.eps;*.ps"),
-            ],
+            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff")],
             multi=False,
         )
         self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
-        self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
 
         self.io_frame.out_dir_var.set(value=self.output_dir)
         if not os.path.exists(self.io_frame.out_dir_var.get()):
@@ -295,27 +290,15 @@ class ResizeTab(BaseTab):
                 **params
             )
 
-        
+        if self.crop_flag_var.get():
+            crop_box = (
+                self.crop_x_var.get(),
+                self.crop_y_var.get(),
+                self.crop_x_var.get() + self.crop_w_var.get(),
+                self.crop_y_var.get() + self.crop_h_var.get(),
+            )
+            self.logger.info(f"[resize] crop box: {crop_box}")
+            img = img.crop(crop_box)
         
         self.preview_frame.clear_preview()
         self.preview_frame.show_image(img)
-
-    def on_files_var_changed(self, *args):
-        files = self.io_frame.files_var.get().strip().split("\n")
-        files = [f for f in files if f.strip()]
-        vector_exts = ('.svg', '.pdf', '.eps', '.ps')
-        is_vector = False
-        if files:
-            # 只要有一个是矢量图就算矢量
-            for f in files:
-                if f.lower().endswith(vector_exts):
-                    is_vector = True
-                    break
-        if is_vector:
-            self.sharpness_entry.deactivate()
-            self.blur_radius_entry.deactivate()
-            self.median_size_entry.deactivate()
-        else:
-            self.sharpness_entry.activate()
-            self.blur_radius_entry.activate()
-            self.median_size_entry.activate()
