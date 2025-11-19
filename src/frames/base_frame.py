@@ -19,7 +19,7 @@ class BaseFrame(ttk.Frame):
 
     def log(self, message, level=logging.INFO):
         if self.logger:
-            self.logger.log(message, level)
+            self.logger.info(message)
 
     def activate(self):
         def activate_frame(frame):

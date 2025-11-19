@@ -84,12 +84,9 @@ class PreviewFrame(BaseFrame):
         self._update_page_label()
 
     def show_image(self, image):
-        for w in self.title_frame.winfo_children():
-            w.destroy()
         try:
             img = image.copy()
             orig_size = img.size
-            # 计算缩放比例，保持比例填满
             frame_w, frame_h = self.width, self.height - 60  # 留出按钮区高度
             scale = min(frame_w / img.width, frame_h / img.height)
             new_size = (int(img.width * scale), int(img.height * scale))
@@ -99,15 +96,19 @@ class PreviewFrame(BaseFrame):
             top = (img.height - frame_h) // 2
             img = img.crop((left, top, left + frame_w, top + frame_h))
             imgtk = ImageTk.PhotoImage(img)
-            self.build_buttons()
-            label = tk.Label(self.title_frame, image=imgtk)
-            label.image = imgtk
-            label.pack(expand=True, fill="both")
-            size_label = tk.Label(self.title_frame, text=f"{orig_size[0]}x{orig_size[1]}", anchor="ne", bg="#f0f0f0")
-            size_label.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
+            self.preview_label.config(image=imgtk)
+            self.preview_label.image = imgtk
+            self.preview_label.config(text="")  # 清除文字
+            # 显示尺寸信息
+            if hasattr(self, "size_label"):
+                self.size_label.config(text=f"{orig_size[0]}x{orig_size[1]}")
+            else:
+                self.size_label = tk.Label(self.title_frame, text=f"{orig_size[0]}x{orig_size[1]}", anchor="ne", bg="#f0f0f0")
+                self.size_label.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
             self._update_page_label()
         except Exception as e:
-            tk.Label(self.title_frame, text="Preview failed").pack(expand=True)
+            self.preview_label.config(image="", text="Preview failed")
+            self.preview_label.image = None
     
     def show_file(self, img_path):
         try:
@@ -115,7 +116,7 @@ class PreviewFrame(BaseFrame):
             # Support vector preview: svg/pdf/eps/ps
 
             if ext in (".svg", ".pdf", ".eps", ".ps"):
-                self.log("Vector file detected, converting to bitmap for preview...")
+                self.logger.info("Vector file detected, converting to bitmap for preview...")
                 with tempfile.NamedTemporaryFile(
                     suffix=".png", delete=False
                 ) as tmp_png:
@@ -131,22 +132,25 @@ class PreviewFrame(BaseFrame):
                         os.remove(png_path)
             else:
                 img = Image.open(img_path)
-            self.log("Displaying preview image...")
+            self.logger.info("Displaying preview image...")
             self.show_image(img)
             self._update_page_label()
         except Exception as e:
-            # 清理预览区域并显示占位
-            for w in self.title_frame.winfo_children():
-                w.destroy()
-            tk.Label(self.title_frame, text="No Preview Available").pack(expand=True)
+            # 只清空图片和尺寸信息，不销毁按钮和页码
+            if hasattr(self, "preview_label"):
+                self.preview_label.config(image="", text="No Preview Available")
+                self.preview_label.image = None
+            if hasattr(self, "size_label"):
+                self.size_label.config(text="")
 
     def clear_preview(self):
-        # 只清空内容，不销毁容器，避免预览区消失
-        if hasattr(self, "title_frame"):
-            for w in self.title_frame.winfo_children():
-                w.destroy()
-            self.build_contents()
-            self._update_page_label()
+        # 只清空图片和尺寸信息，不销毁按钮和页码
+        if hasattr(self, "preview_label"):
+            self.preview_label.config(image="", text="图片预览区域")
+            self.preview_label.image = None
+        if hasattr(self, "size_label"):
+            self.size_label.config(text="")
+        self._update_page_label()
             
     def previous_page(self):
         """

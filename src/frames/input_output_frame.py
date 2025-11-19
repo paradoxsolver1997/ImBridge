@@ -85,9 +85,9 @@ class InputOutputFrame(BaseFrame):
                 except Exception:
                     pass
         if oversize:
-            self.log(
+            self.logger.error(
                 f"The following files exceed {max_size_mb}MB and will not be loaded:\n"
-                + "\n".join(oversize), logging.ERROR
+                + "\n".join(oversize)
             )
             files = [f for f in files if f not in oversize]
         if files:
@@ -101,7 +101,7 @@ class InputOutputFrame(BaseFrame):
     def open_out_dir(self):
         path = self.out_dir_var.get()
         if not path or not os.path.isdir(path):
-            self.log("Invalid Folder. Please select a valid output folder first.", logging.ERROR)
+            self.logger.error("Invalid Folder. Please select a valid output folder first.")
             return
         try:
             if os.name == 'nt':
@@ -109,9 +109,9 @@ class InputOutputFrame(BaseFrame):
             elif os.name == 'posix':
                 subprocess.Popen(['xdg-open', path])
             else:
-                self.log("Open Folder", f"Please open the folder manually: {path}")
+                self.logger.info("Open Folder", f"Please open the folder manually: {path}")
         except Exception as e:
-            self.log(f"Failed to open folder:\n{e}", logging.ERROR)
+            self.logger.error(f"Failed to open folder:\n{e}")
 
 
     def open_file_list(self):
@@ -126,7 +126,7 @@ class InputOutputFrame(BaseFrame):
         )
         self.file_details_frame.pack(fill="both", expand=True)
         # Initialize size, scaling, and scrollbars
-        self.log("File details frame created.", logging.INFO)
+        self.logger.info("File details frame created.")
 
 
     def set_list_geometry(self):
@@ -155,7 +155,7 @@ class InputOutputFrame(BaseFrame):
                     file_list=file_list,
                 )
                 self.file_details_frame.pack(fill="both", expand=True)
-                self.log("File details frame refreshed due to file list change.", logging.INFO)
+                self.logger.info("File details frame refreshed due to file list change.")
 
     def load_file_list(self):
         try:

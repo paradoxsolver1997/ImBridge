@@ -13,6 +13,7 @@ from src.tabs.ink_tab import InkTab
 from src.tabs.resize_tab import ResizeTab
 from src.tabs.tool_tab import ToolTab
 from src.tabs.resize_vector_tab import ResizeVectorTab
+from src.tabs.convertion_tab import ConvertionTab
 
 
 def init_styles():
@@ -80,6 +81,8 @@ class App(tk.Tk):
         self.logger.set_gui_widget(log_text)
 
         # Create and add tabs
+        convertion_tab = ConvertionTab(nb)
+        nb.add(convertion_tab, text="  Convertion  ")
         bitmap_tab = BitmapTab(nb)
         nb.add(bitmap_tab, text="  Bitmap  ")
         vector_tab = VectorTab(nb)

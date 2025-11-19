@@ -40,7 +40,7 @@ class FileDetailsFrame(BaseFrame):
         self.preview_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         # 绑定自定义翻页事件
         self.preview_frame.bind('<<PreviewPageChanged>>', self._on_preview_page_changed)
-
+        
         # 关闭按钮
         btn = ttk.Button(main_frame, text="关闭", command=self.list_window.destroy)
         btn.pack(pady=(0, 6), anchor="e")
