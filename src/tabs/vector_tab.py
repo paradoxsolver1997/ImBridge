@@ -36,23 +36,7 @@ class VectorTab(BaseTab):
         if not os.path.exists(self.io_frame.out_dir_var.get()):
             os.makedirs(self.io_frame.out_dir_var.get(), exist_ok=True)
 
-        # Tool Check
-        tool_row = ttk.LabelFrame(self, text="Tool Check", style="Bold.TLabelframe")
-        tool_row.pack(padx=(8, 8), pady=(4, 4), fill="x")
-        tool_keys = [
-            ("cairosvg", "cairosvg"),
-            ("PyPDF2", "PyPDF2"),
-            ("ghostscript", "Ghostscript"),
-            ("pstoedit", "pstoedit"),
-            ("libcairo-2.dll", "libcairo-2.dll"),
-        ]
-        for key, label in tool_keys:
-            status = "✔️" if converter.check_tool(key) else "❌"
-            color = "red" if status == "❌" else "black"
-            ttk.Label(tool_row, text=f"{label}: {status}", foreground=color).pack(
-                side="left", padx=(6, 8), pady=8
-            )
-
+        
         # Output format
 
         row_frame = ttk.Frame(self)

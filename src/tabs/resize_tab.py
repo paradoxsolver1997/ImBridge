@@ -17,7 +17,7 @@ class ResizeTab(BaseTab):
 
         self._preview_imgtk = None
         self.output_dir = os.path.join(self.output_dir, "resize_output")
-        self.mode_var = tk.IntVar(value=0)
+        self.mode_var = tk.IntVar(value=1)
         self.build_content()
         self.update_mode()
 
@@ -45,41 +45,54 @@ class ResizeTab(BaseTab):
         option_row = ttk.Frame(self)
         option_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
+        # Row 1: Mode Selection
         # The Upscale options
-        frm_0 = ttk.LabelFrame(option_row, text="Option 1. Scale", style="Bold.TLabelframe")
-        frm_0.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-        
-        ttk.Radiobutton(
-            frm_0, 
-            text='', 
-            variable=self.mode_var, 
-            value=0, 
-            command=self.update_mode
-        ).pack(side="left", padx=(6, 8))
-        
-        self.scale_factor_var = tk.DoubleVar(value=2.0)
-        self.scale_factor_labeled_entry = LabeledValidatedEntry(
-            frm_0,
-            var=self.scale_factor_var,
-            bounds=(1.0, 2.0),
-            label_prefix="Scale Factor",
-            width=6,
-        )
-        self.scale_factor_labeled_entry.pack(side="left", padx=(6, 8))
-
-        # The Upscale options
-        frm_1 = ttk.LabelFrame(option_row, text="Option 2. Resize", style="Bold.TLabelframe")
+        frm_1 = ttk.LabelFrame(option_row, text="Option 1. Original", style="Bold.TLabelframe")
         frm_1.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-
+        
         ttk.Radiobutton(
             frm_1, 
-            text='', 
+            text='Original Size', 
             variable=self.mode_var, 
             value=1, 
             command=self.update_mode
         ).pack(side="left", padx=(6, 8))
 
-        row_2 = ttk.Frame(frm_1)
+        # The Upscale options
+        frm_2 = ttk.LabelFrame(option_row, text="Option 2. Scale", style="Bold.TLabelframe")
+        frm_2.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+        
+        ttk.Radiobutton(
+            frm_2, 
+            text='Scale', 
+            variable=self.mode_var, 
+            value=2, 
+            command=self.update_mode
+        ).pack(side="left", padx=(6, 8))
+        
+        self.scale_factor_var = tk.DoubleVar(value=2.0)
+        self.scale_factor_labeled_entry = LabeledValidatedEntry(
+            frm_2,
+            var=self.scale_factor_var,
+            bounds=(1.0, 2.0),
+            label_prefix="Factor",
+            width=6,
+        )
+        self.scale_factor_labeled_entry.pack(side="left", padx=(6, 8))
+
+        # The Upscale options
+        frm_3 = ttk.LabelFrame(option_row, text="Option 3. Resize", style="Bold.TLabelframe")
+        frm_3.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+
+        ttk.Radiobutton(
+            frm_3, 
+            text='Resize', 
+            variable=self.mode_var, 
+            value=3, 
+            command=self.update_mode
+        ).pack(side="left", padx=(6, 8))
+
+        row_2 = ttk.Frame(frm_3)
         row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
         self.width_var = tk.IntVar(value=1024)
@@ -102,68 +115,64 @@ class ResizeTab(BaseTab):
         )
         self.height_entry.pack(side="left", padx=(2, 2))
 
+        # Row 2: Settings
+
         parameter_row = ttk.Frame(self)
-        parameter_row.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+        parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
-        # The Upscale options
-        frm_3 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_3.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-
-        row_2 = ttk.Frame(frm_3)
-        row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
+        # The Parameter Settings
+        frm_4 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_4.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
         self.sharpness_var = tk.DoubleVar(value=5.0)
         self.sharpness_entry = LabeledValidatedEntry(
-            row_2,
+            frm_4,
             var=self.sharpness_var,
             bounds=(0.0, 10.0),
             label_prefix="Sharpness",
             width=6,
         )
-        self.sharpness_entry.pack(side="left", padx=(2, 2))
+        self.sharpness_entry.pack(side="top", fill="x", padx=(2, 2))
 
         self.blur_radius_var = tk.DoubleVar(value=1.0)
         self.blur_radius_entry = LabeledValidatedEntry(
-            row_2,
+            frm_4,
             var=self.blur_radius_var,
             bounds=(0.0, 10.0),
             label_prefix="Blur Radius",
             width=6,
         )
-        self.blur_radius_entry.pack(side="left", padx=(2, 2))
+        self.blur_radius_entry.pack(side="top", fill="x", padx=(2, 2))
 
         self.median_size_var = tk.IntVar(value=3)
         self.median_size_entry = LabeledValidatedEntry(
-            row_2,
+            frm_4,
             var=self.median_size_var,
             bounds=(1, 15),
             label_prefix="Median Size",
             width=6,
         )
-        self.median_size_entry.pack(side="left", padx=(2, 8))
+        self.median_size_entry.pack(side="top", fill="x", padx=(2, 8))
 
-        ttk.Button(
-            row_2,
-            text="Upscale & Save",
-            command=lambda: self.batch_convert(
-                mode="upscale",
-                file_list=self.io_frame.files_var.get().strip().split("\n"),
-                out_dir=self.io_frame.out_dir_var.get(),
-                scale_factor=self.scale_factor_var.get()
-            ),
-        ).pack(side="left", padx=8)
+        
+
+        frm_5 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_5.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
         # --- Crop 选项 ---
-        crop_row = ttk.Frame(frm_3)
-        crop_row.pack(fill="x", padx=4, pady=(4, 2), anchor="w")
+        crop_row = ttk.Frame(frm_5)
+        crop_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
 
         self.crop_flag_var = tk.BooleanVar(value=False)
         crop_check = ttk.Checkbutton(crop_row, text="Crop", variable=self.crop_flag_var)
         crop_check.pack(side="left", padx=(0, 8))
 
+        cord_row = ttk.Frame(frm_5)
+        cord_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+
         self.crop_x_var = tk.IntVar(value=0)
         self.crop_x_entry = LabeledValidatedEntry(
-            crop_row,
+            cord_row,
             var=self.crop_x_var,
             bounds=(0, 10000),
             label_prefix="X",
@@ -173,7 +182,7 @@ class ResizeTab(BaseTab):
 
         self.crop_y_var = tk.IntVar(value=0)
         self.crop_y_entry = LabeledValidatedEntry(
-            crop_row,
+            cord_row,
             var=self.crop_y_var,
             bounds=(0, 10000),
             label_prefix="Y",
@@ -181,9 +190,12 @@ class ResizeTab(BaseTab):
         )
         self.crop_y_entry.pack(side="left", padx=(2, 2))
 
+        size_row = ttk.Frame(frm_5)
+        size_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+
         self.crop_w_var = tk.IntVar(value=100)
         self.crop_w_entry = LabeledValidatedEntry(
-            crop_row,
+            size_row,
             var=self.crop_w_var,
             bounds=(1, 10000),
             label_prefix="W",
@@ -193,7 +205,7 @@ class ResizeTab(BaseTab):
 
         self.crop_h_var = tk.IntVar(value=100)
         self.crop_h_entry = LabeledValidatedEntry(
-            crop_row,
+            size_row,
             var=self.crop_h_var,
             bounds=(1, 10000),
             label_prefix="H",
@@ -201,8 +213,11 @@ class ResizeTab(BaseTab):
         )
         self.crop_h_entry.pack(side="left", padx=(2, 2))
 
+        frm_6 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_6.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+
         # --- Preview 按钮 ---
-        preview_btn_row = ttk.Frame(self)
+        preview_btn_row = ttk.Frame(frm_6)
         preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             preview_btn_row,
@@ -210,15 +225,34 @@ class ResizeTab(BaseTab):
             command=self.on_preview
         ).pack(side="right", padx=(2, 8))
 
+        save_btn_row = ttk.Frame(frm_6)
+        save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
+        ttk.Button(
+            save_btn_row,
+            text="Upscale & Save",
+            command=lambda: self.batch_convert(
+                mode="upscale",
+                file_list=self.io_frame.files_var.get().strip().split("\n"),
+                out_dir=self.io_frame.out_dir_var.get(),
+                scale_factor=self.scale_factor_var.get()
+            ),
+        ).pack(side="left", padx=8)
+
+
+
     def update_mode(self):
-        if self.mode_var.get() == 0:
+        if self.mode_var.get() == 2:
             self.scale_factor_labeled_entry.activate()
             self.width_entry.deactivate()
             self.height_entry.deactivate()
-        else:
+        elif self.mode_var.get() == 3:
             self.scale_factor_labeled_entry.deactivate()
             self.width_entry.activate()
             self.height_entry.activate()
+        else:
+            self.scale_factor_labeled_entry.deactivate()
+            self.width_entry.deactivate()
+            self.height_entry.deactivate()
 
 
     def on_preview(self):
@@ -234,14 +268,14 @@ class ResizeTab(BaseTab):
             "blur_radius": self.blur_radius_var.get(),
             "median_size": self.median_size_var.get(),
         }
-        if self.mode_var.get() == 0:
+        if self.mode_var.get() == 2:
             img = scale_image(
                 img,
                 scale_factor=self.scale_factor_var.get(),
                 log_fun=self.logger.info,
                 **params
             )
-        else:
+        elif self.mode_var.get() == 3:
             
             new_width = self.width_var.get()
             new_height = self.height_var.get()
@@ -255,8 +289,6 @@ class ResizeTab(BaseTab):
                 log_fun=self.logger.info,
                 **params
             )
-        self.preview_frame.clear_preview()
-        self.preview_frame.show_image(img)
 
         if self.crop_flag_var.get():
             crop_box = (
@@ -267,4 +299,6 @@ class ResizeTab(BaseTab):
             )
             self.logger.info(f"[resize] crop box: {crop_box}")
             img = img.crop(crop_box)
-            self.preview_frame.show_image(img)
+        
+        self.preview_frame.clear_preview()
+        self.preview_frame.show_image(img)
