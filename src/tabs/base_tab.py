@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 import logging
 import tempfile
 from src.utils import converter
-from src.utils import enhancement
+from src.utils import ink
 
 from src.frames.base_frame import BaseFrame
 
@@ -121,7 +121,7 @@ class BaseTab(BaseFrame):
             elif mode == "grayscale":
                 out_path = os.path.join(out_dir, 'grayscale_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, 
                         out_path=out_path, 
                         log_fun=self.log
@@ -129,7 +129,7 @@ class BaseTab(BaseFrame):
             elif mode == "binarize":
                 out_path = os.path.join(out_dir, 'binarize_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, 
                         out_path=out_path, 
                         log_fun=self.log,
@@ -141,7 +141,7 @@ class BaseTab(BaseFrame):
                 bmp_path = os.path.join(out_dir, base + "_potrace.bmp")
                 out_path = os.path.join(out_dir, 'traced_' + base + out_ext)
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, bmp_path, log_fun=self.log, binarize=True
                     )
                     converter.bmp_to_vector(bmp_path, out_path, log_fun=self.log)
@@ -228,7 +228,7 @@ class BaseTab(BaseFrame):
             elif mode == "grayscale":
                 out_path = os.path.join(out_dir, 'grayscale_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, 
                         out_path=out_path, 
                         log_fun=self.log
@@ -236,7 +236,7 @@ class BaseTab(BaseFrame):
             elif mode == "binarize":
                 out_path = os.path.join(out_dir, 'binarize_' + os.path.basename(f))
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, 
                         out_path=out_path, 
                         log_fun=self.log,
@@ -248,7 +248,7 @@ class BaseTab(BaseFrame):
                 bmp_path = os.path.join(out_dir, base + "_potrace.bmp")
                 out_path = os.path.join(out_dir, 'traced_' + base + out_ext)
                 if confirm_overwrite(out_path):
-                    enhancement.grayscale_image(
+                    ink.grayscale_image(
                         f, bmp_path, log_fun=self.log, binarize=True
                     )
                     converter.bmp_to_vector(bmp_path, out_path, log_fun=self.log)

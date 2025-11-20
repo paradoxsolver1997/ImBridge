@@ -459,12 +459,21 @@ def check_tool(tool_key: str) -> bool:
                 return False
             else:
                 return True
-        elif tool["type"] == "python" and tool["key"] == "cairosvg":
-            return importlib.util.find_spec("cairosvg") is not None
+        elif tool["type"] == "python":
+            # 支持cairosvg和pymupdf
+            if tool["key"] == "cairosvg":
+                return importlib.util.find_spec("cairosvg") is not None
+            elif tool["key"] == "pymupdf":
+                return importlib.util.find_spec("fitz") is not None
+            else:
+                return False
         else:
             return False
-    # If tool_list.json does not define the key, try to detect it as a Python package
+    # If tool_list.json does not define the key, try to detect it as一个Python包
     try:
+        # 兼容pymupdf: fitz为import名
+        if tool_key == "pymupdf":
+            return importlib.util.find_spec("fitz") is not None
         return importlib.util.find_spec(tool_key) is not None
     except Exception:
         return False

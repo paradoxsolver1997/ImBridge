@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-from src.utils.enhancement import scale_image, resize_image
+import src.utils.resize as rz
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
@@ -88,7 +88,7 @@ class ResizeTab(BaseTab):
         self.scale_y_factor_var = tk.DoubleVar(value=1.0)
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
-            var=self.scale_factor_var,
+            var=self.scale_y_factor_var,
             bounds=(1.0, 2.0),
             label_prefix="y",
             width=6,
@@ -237,51 +237,50 @@ class ResizeTab(BaseTab):
         ttk.Button(
             preview_btn_row,
             text="Preview",
-            command=self.on_preview
+            command=lambda: self.on_resize(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
         save_btn_row = ttk.Frame(frm_6)
         save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             save_btn_row,
-            text="Upscale & Save",
-            command=lambda: self.batch_convert(
-                mode="upscale",
-                file_list=self.io_frame.files_var.get().strip().split("\n"),
-                out_dir=self.io_frame.out_dir_var.get(),
-                scale_factor=self.scale_factor_var.get()
-            ),
+            text="Save",
+            command=lambda: self.on_resize(save_flag=True)
         ).pack(side="left", padx=8)
 
 
 
     def update_mode(self):
         if self.mode_var.get() == 2:
-            self.scale_factor_labeled_entry.activate()
+            self.scale_x_factor_labeled_entry.activate()
+            self.scale_y_factor_labeled_entry.activate()
             self.width_entry.deactivate()
             self.height_entry.deactivate()
         elif self.mode_var.get() == 3:
-            self.scale_factor_labeled_entry.deactivate()
+            self.scale_x_factor_labeled_entry.deactivate()
+            self.scale_y_factor_labeled_entry.deactivate()
             self.width_entry.activate()
             self.height_entry.activate()
         else:
-            self.scale_factor_labeled_entry.deactivate()
+            self.scale_x_factor_labeled_entry.deactivate()
+            self.scale_y_factor_labeled_entry.deactivate()
             self.width_entry.deactivate()
             self.height_entry.deactivate()
 
 
-    def on_preview(self):
+    def on_resize(self, save_flag=False):
 
         file_list = self.io_frame.load_file_list()
         if not file_list:
             # 这里可以弹窗、日志或直接 return
             return
-        img = Image.open(file_list[0])
         
         params = {
             "sharpness": self.sharpness_var.get(),
             "blur_radius": self.blur_radius_var.get(),
             "median_size": self.median_size_var.get(),
+            "save_flag": save_flag,
+            "preview_flag": True
         }
         if self.crop_flag_var.get():
             params.update({
@@ -294,28 +293,32 @@ class ResizeTab(BaseTab):
             })
 
         if self.mode_var.get() == 2:
-            img = scale_image(
-                img,
-                scale_factor=self.scale_factor_var.get(),
-                log_fun=self.logger.info,
-                **params
-            )
+            params.update({
+                "scale_x": self.scale_x_factor_var.get(),
+                "scale_y": self.scale_y_factor_var.get(),
+            })
         elif self.mode_var.get() == 3:
-            
-            new_width = self.width_var.get()
-            new_height = self.height_var.get()
+            params.update({
+                "new_width": self.width_var.get(),
+                "new_height": self.height_var.get(),
+            })
 
-            enhance_flag = new_width > img.width and new_height > img.height
-            img = resize_image(
-                img,
-                width=new_width,
-                height=new_height,
-                enhance_flag=enhance_flag,
-                log_fun=self.logger.info,
-                **params
-            )
+        # 根据文件类型选择不同的resize方法
+        in_path = file_list[0]
+        ext = os.path.splitext(in_path)[1].lower()
+        out_path = os.path.join(
+            self.io_frame.out_dir_var.get(), 
+            f"{os.path.splitext(os.path.basename(in_path))[0]}.resize{ext}")
 
-        
+        img = None
+        if ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
+            img = rz.resize_image(in_path, out_path, log_fun=self.logger.info, **params)
+        elif ext == '.svg':
+            img = rz.resize_svg(in_path, out_path, log_fun=self.logger.info, **params)
+        elif ext == '.pdf':
+            img = rz.resize_pdf(in_path, out_path, log_fun=self.logger.info, **params)
+        elif ext in ['.eps', '.ps']:
+            img = rz.resize_eps_ps(in_path, out_path, log_fun=self.logger.info, **params)
         
         self.preview_frame.clear_preview()
         self.preview_frame.show_image(img)

@@ -9,12 +9,9 @@ from src.frames.preview_frame import PreviewFrame
 from src.frames.log_frame import LogFrame
 
 from src.tabs.about_tab import AboutTab
-from src.tabs.bitmap_tab import BitmapTab
-from src.tabs.vector_tab import VectorTab
 from src.tabs.ink_tab import InkTab
 from src.tabs.resize_tab import ResizeTab
 from src.tabs.tool_tab import ToolTab
-from src.tabs.resize_vector_tab import ResizeVectorTab
 from src.tabs.convertion_tab import ConvertionTab
 
 

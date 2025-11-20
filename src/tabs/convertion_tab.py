@@ -13,7 +13,7 @@ class ConvertionTab(BaseTab):
     def __init__(self, parent, title=None, logger=None):
         super().__init__(parent, title=title, logger=logger)
         self._preview_imgtk = None
-        self.output_dir = os.path.join(self.output_dir, "vector_output")
+        self.output_dir = os.path.join(self.output_dir, "convertion_output")
         self.build_content()
 
     def build_content(self):

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-from src.utils.enhancement import scale_image, resize_image
+from src.utils.ink import scale_image, resize_image
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame

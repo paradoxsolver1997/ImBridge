@@ -30,7 +30,7 @@ class ToolTab(BaseTab):
         tool_row.pack(padx=(8, 8), pady=(4, 4), fill="x")
         tool_keys = [
             ("cairosvg", "cairosvg"),
-            ("PyPDF2", "PyPDF2"),
+            ("pymupdf", "PyMuPDF (fitz)"),
             ("ghostscript", "Ghostscript"),
             ("pstoedit", "pstoedit"),
             ("libcairo-2.dll", "libcairo-2.dll"),

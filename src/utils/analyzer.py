@@ -52,7 +52,7 @@ def vector_analyzer(
         log_fun(msg)
     return result
 
-
+'''
 def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
     """
     Analyze PDF files for pure vector, pure raster, or mixed graphics, and count paths, images, and image sizes.
@@ -112,6 +112,48 @@ def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
     elif result["num_paths"] > 0:
         result["type"] = "vector"
     return result
+'''
+
+def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
+    """
+    用 PyMuPDF 分析 PDF 文件的矢量/栅格内容，统计 path 和 image 数量及尺寸。
+    """
+    import fitz  # PyMuPDF
+    result = {
+        "type": "unknown",
+        "num_paths": 0,
+        "num_images": 0,
+        "images": [],
+    }
+    doc = fitz.open(pdf_path)
+    for page in doc:
+        # 统计图片
+        for img in page.get_images(full=True):
+            xref = img[0]
+            pix = fitz.Pixmap(doc, xref)
+            w, h = pix.width, pix.height
+            result["num_images"] += 1
+            result["images"].append({
+                "xref": xref,
+                "width": w,
+                "height": h,
+            })
+            pix = None  # 释放内存
+        # 统计路径
+        drawings = page.get_drawings()
+        vector_ops = [d for d in drawings if d["type"] != "image"]
+        path_count = len(vector_ops)
+
+        result["num_paths"] += path_count
+    # 类型判定
+    if result["num_images"] > 0 and result["num_paths"] > 0:
+        result["type"] = "mixed"
+    elif result["num_images"] > 0:
+        result["type"] = "raster"
+    elif result["num_paths"] > 0:
+        result["type"] = "vector"
+    return result
+
 
 def svg_analyzer(svg_path: str) -> Dict[str, Any]:
     """

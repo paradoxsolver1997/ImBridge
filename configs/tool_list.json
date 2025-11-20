@@ -34,4 +34,14 @@
         "config_key": null,
         "type": "dll"
     }
+    ,
+    {
+        "key": "pymupdf",
+        "display": "PyMuPDF (fitz)",
+        "executables": [],
+        "config_key": null,
+        "type": "python",
+        "desc": "PDF和XPS文件的读取、分析和编辑，支持矢量与栅格内容。",
+        "homepage": "https://pymupdf.readthedocs.io/"
+    }
 ]
