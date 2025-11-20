@@ -41,13 +41,14 @@ class PreviewFrame(BaseFrame):
     def build_buttons(self):
         # 翻页按钮区（先pack，保证在底部）
         btn_frame = ttk.Frame(self.title_frame)
-        btn_frame.pack(side="bottom", pady=3)
-        self.btn_prev = ttk.Button(btn_frame, text="◀", width=1.5, command=self.previous_page)
+        btn_frame.pack(side="bottom", pady=0)
+        small_font = ("TkDefaultFont", 8)
+        self.btn_prev = tk.Button(btn_frame, text="◀", width=2, height=1, font=small_font, command=self.previous_page)
         self.btn_prev.pack(side="left", ipadx=0, ipady=0, padx=(0, 12))
         # 新增：页码label
         self.page_label = ttk.Label(btn_frame, text=self._get_page_text(), width=7, anchor="center")
         self.page_label.pack(side="left", padx=(0, 12))
-        self.btn_next = ttk.Button(btn_frame, text="▶", width=1.5, command=self.next_page)
+        self.btn_next = tk.Button(btn_frame, text="▶", width=2, height=1, font=small_font, command=self.next_page)
         self.btn_next.pack(side="left", ipadx=0, ipady=0)
 
     def _get_page_text(self):
@@ -87,15 +88,19 @@ class PreviewFrame(BaseFrame):
         try:
             img = image.copy()
             orig_size = img.size
-            frame_w, frame_h = self.width, self.height - 60  # 留出按钮区高度
+            self.update_idletasks()
+            frame_w = self.preview_label.winfo_width()
+            frame_h = self.preview_label.winfo_height()
             scale = min(frame_w / img.width, frame_h / img.height)
             new_size = (int(img.width * scale), int(img.height * scale))
             img = img.resize(new_size, Image.LANCZOS)
             # 居中裁剪
-            left = (img.width - frame_w) // 2
-            top = (img.height - frame_h) // 2
-            img = img.crop((left, top, left + frame_w, top + frame_h))
-            imgtk = ImageTk.PhotoImage(img)
+            bg_color = "#f0f0f0"
+            bg = Image.new("RGB", (frame_w, frame_h), bg_color)
+            left = (frame_w - img.width) // 2
+            top = (frame_h - img.height) // 2
+            bg.paste(img, (left, top))
+            imgtk = ImageTk.PhotoImage(bg)
             self.preview_label.config(image=imgtk)
             self.preview_label.image = imgtk
             self.preview_label.config(text="")  # 清除文字
@@ -114,9 +119,9 @@ class PreviewFrame(BaseFrame):
         try:
             ext = os.path.splitext(img_path)[1].lower()
             # Support vector preview: svg/pdf/eps/ps
-
+            
             if ext in (".svg", ".pdf", ".eps", ".ps"):
-                self.logger.info("Vector file detected, converting to bitmap for preview...")
+                # self.log("Vector file detected, converting to bitmap for preview...")
                 with tempfile.NamedTemporaryFile(
                     suffix=".png", delete=False
                 ) as tmp_png:
@@ -132,7 +137,7 @@ class PreviewFrame(BaseFrame):
                         os.remove(png_path)
             else:
                 img = Image.open(img_path)
-            self.logger.info("Displaying preview image...")
+            # self.log("Displaying preview image...")
             self.show_image(img)
             self._update_page_label()
         except Exception as e:

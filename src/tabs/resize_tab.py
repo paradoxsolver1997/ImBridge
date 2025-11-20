@@ -75,15 +75,25 @@ class ResizeTab(BaseTab):
             command=self.update_mode
         ).pack(side="left", padx=(6, 8))
         
-        self.scale_factor_var = tk.DoubleVar(value=2.0)
-        self.scale_factor_labeled_entry = LabeledValidatedEntry(
+        self.scale_x_factor_var = tk.DoubleVar(value=1.0)
+        self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
+            frm_2,
+            var=self.scale_x_factor_var,
+            bounds=(1.0, 2.0),
+            label_prefix="x",
+            width=6,
+        )
+        self.scale_x_factor_labeled_entry.pack(side="left", padx=(6, 8))
+
+        self.scale_y_factor_var = tk.DoubleVar(value=1.0)
+        self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_factor_var,
             bounds=(1.0, 2.0),
-            label_prefix="Factor",
+            label_prefix="y",
             width=6,
         )
-        self.scale_factor_labeled_entry.pack(side="left", padx=(6, 8))
+        self.scale_y_factor_labeled_entry.pack(side="left", padx=(6, 8))
 
         # The Upscale options
         frm_3 = ttk.LabelFrame(option_row, text="Option 3. Resize", style="Bold.TLabelframe")
@@ -105,7 +115,7 @@ class ResizeTab(BaseTab):
             row_2,
             var=self.width_var,
             bounds=(1, 10000),
-            label_prefix="Width",
+            label_prefix="W",
             width=6,
         )
         self.width_entry.pack(side="left", padx=(6, 2))
@@ -115,7 +125,7 @@ class ResizeTab(BaseTab):
             row_2,
             var=self.height_var,
             bounds=(1, 10000),
-            label_prefix="Height",
+            label_prefix="H",
             width=6,
         )
         self.height_entry.pack(side="left", padx=(2, 2))
@@ -169,7 +179,7 @@ class ResizeTab(BaseTab):
         crop_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
 
         self.crop_flag_var = tk.BooleanVar(value=False)
-        crop_check = ttk.Checkbutton(crop_row, text="Crop", variable=self.crop_flag_var)
+        crop_check = ttk.Checkbutton(crop_row, text="Crop after Resize", variable=self.crop_flag_var)
         crop_check.pack(side="left", padx=(0, 8))
 
         cord_row = ttk.Frame(frm_5)
@@ -273,6 +283,16 @@ class ResizeTab(BaseTab):
             "blur_radius": self.blur_radius_var.get(),
             "median_size": self.median_size_var.get(),
         }
+        if self.crop_flag_var.get():
+            params.update({
+                "crop_box": (
+                    self.crop_x_var.get(),
+                    self.crop_y_var.get(),
+                    self.crop_x_var.get() + self.crop_w_var.get(),
+                    self.crop_y_var.get() + self.crop_h_var.get(),
+                )
+            })
+
         if self.mode_var.get() == 2:
             img = scale_image(
                 img,

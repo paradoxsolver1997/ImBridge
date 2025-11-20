@@ -21,8 +21,8 @@ class ConvertionTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Vector Format Conversion (Batch)",
-            comment_text="Convert vectors to vectors or bitmaps",
+            title_text="Format Conversion (Batch)",
+            comment_text="Convert formats between bitmaps and vectors",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
@@ -43,14 +43,14 @@ class ConvertionTab(BaseTab):
 
         # Bitmap format selection
         frm_3 = ttk.LabelFrame(
-            self, text="Option 3. Convert to Bitmaps", style="Bold.TLabelframe"
+            self, text="Convertion", style="Bold.TLabelframe"
         )
         frm_3.pack(padx=(6, 8), pady=(8, 4), fill="x")
         bitmap_fmt_row = ttk.Frame(frm_3)
         bitmap_fmt_row.pack(fill="x", padx=0, pady=4)
         self.out_fmt = tk.StringVar(value=".png")
 
-        ttk.Label(bitmap_fmt_row, text="Bitmap format:").pack(
+        ttk.Label(bitmap_fmt_row, text="Output format:").pack(
             side="left", padx=(8, 4), anchor="w"
         )
         ttk.Combobox(

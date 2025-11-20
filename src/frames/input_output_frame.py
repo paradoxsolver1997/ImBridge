@@ -15,7 +15,7 @@ class InputOutputFrame(BaseFrame):
         # Input files
         self.title = title
         frame = ttk.LabelFrame(
-            self, text="Input/Output Settings", style="Bold.TLabelframe"
+            self, text="Settings", style="Bold.TLabelframe"
         )
         frame.pack(fill="x", padx=(4, 4), pady=4)
 
@@ -24,11 +24,11 @@ class InputOutputFrame(BaseFrame):
         self.files_var = tk.StringVar()
         self.files_var.trace_add("write", self.on_files_var_changed)
             
-        ttk.Label(input_row, text="Input files:").pack(
-            side="left", padx=(6, 8), anchor="w"
+        ttk.Label(input_row, text="Input image(s):", width=14).pack(
+            side="left", padx=(6, 2), expand=False
         )
         ttk.Entry(input_row, textvariable=self.files_var).pack(
-            side="left", padx=(2, 0), expand=True, fill="x"
+            side="left", padx=(2, 2), expand=True, fill="x"
         )
         ttk.Button(
             input_row,
@@ -40,25 +40,25 @@ class InputOutputFrame(BaseFrame):
                 multi=multi,
                 title="Select files",
             ),
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=2)
         ttk.Button(
-            input_row, text="File Details...", command=lambda: self.open_file_list()
-        ).pack(side="left", padx=4)
+            input_row, text="Details...", command=lambda: self.open_file_list()
+        ).pack(side="left", padx=2)
 
         # Output directory
         output_row = ttk.Frame(frame)
         output_row.pack(fill="x", padx=0, pady=(2, 4))
         self.out_dir_var = tk.StringVar()
-        ttk.Label(output_row, text="Output folder:").pack(side="left", padx=(6, 8))
+        ttk.Label(output_row, text="Output folder:", width=14).pack(side="left", padx=(6, 2), expand=False)
         ttk.Entry(output_row, textvariable=self.out_dir_var).pack(
-            side="left", padx=(0, 0), expand=True, fill="x"
+            side="left", padx=(2, 2), expand=True, fill="x"
         )
         ttk.Button(
             output_row, text="Select...", command=lambda: self.select_out_dir()
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=2)
         ttk.Button(
-            output_row, text="Open Folder...", command=lambda: self.open_out_dir()
-        ).pack(side="left", padx=4)
+            output_row, text="Open...", command=lambda: self.open_out_dir()
+        ).pack(side="left", padx=2)
 
     def browse_files(
         self, var, filetypes, max_size_mb=None, multi=True, title="Select files"

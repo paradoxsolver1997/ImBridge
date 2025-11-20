@@ -6,6 +6,8 @@ import os
 from src.utils.logger import Logger
 
 from src.frames.preview_frame import PreviewFrame
+from src.frames.log_frame import LogFrame
+
 from src.tabs.about_tab import AboutTab
 from src.tabs.bitmap_tab import BitmapTab
 from src.tabs.vector_tab import VectorTab
@@ -60,39 +62,27 @@ class App(tk.Tk):
         bottom_frame = ttk.Frame(main_frame)
         bottom_frame.pack(side="bottom", fill="x")
 
-        log_frame = ttk.LabelFrame(bottom_frame, text="Log Output")
-        log_frame.pack(side="left", fill="both", expand=True)
-
-        self.preview_frame = PreviewFrame(log_frame, title="Preview", width=160, height=160)
+        self.preview_frame = PreviewFrame(bottom_frame, title="Preview", width=160, height=160)
         self.preview_frame.pack(side="right", fill="y", padx=0, pady=0, expand=False)
 
-        # Log text area with scrollbar
-        log_scroll = ttk.Scrollbar(log_frame, orient="vertical")
-        log_scroll.pack(side="right", fill="y")
-        log_text = tk.Text(
-            log_frame,
-            height=10,
-            state="disabled",
-            font=("Consolas", 10),
-            yscrollcommand=log_scroll.set,
-        )
-        log_text.pack(side="left", fill="both", expand=True, padx=4, pady=2)
-        log_scroll.config(command=log_text.yview)
-        self.logger.set_gui_widget(log_text)
+        self.log_frame = LogFrame(bottom_frame, title="Log Output")
+        self.log_frame.pack(side="left", fill="both", expand=True)
+        
+        self.logger.set_gui_widget(self.log_frame.log_text)
 
         # Create and add tabs
         convertion_tab = ConvertionTab(nb)
         nb.add(convertion_tab, text="  Convertion  ")
-        bitmap_tab = BitmapTab(nb)
-        nb.add(bitmap_tab, text="  Bitmap  ")
-        vector_tab = VectorTab(nb)
-        nb.add(vector_tab, text="  Vector  ")
+        #bitmap_tab = BitmapTab(nb)
+        #nb.add(bitmap_tab, text="  Bitmap  ")
+        #vector_tab = VectorTab(nb)
+        #nb.add(vector_tab, text="  Vector  ")
         enhance_tab = InkTab(nb)
         nb.add(enhance_tab, text="  Workshop  ")
         resize_tab = ResizeTab(nb)
         nb.add(resize_tab, text="  Resize & Crop  ")
-        resize_vector_tab = ResizeVectorTab(nb)
-        nb.add(resize_vector_tab, text="  Resize Vector  ")
+        #resize_vector_tab = ResizeVectorTab(nb)
+        #nb.add(resize_vector_tab, text="  Resize Vector  ")
         tool_tab = ToolTab(nb)
         nb.add(tool_tab, text="  External Tools★  ")
         about_tab = AboutTab(nb)

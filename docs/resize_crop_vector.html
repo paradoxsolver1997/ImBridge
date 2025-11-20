@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>矢量图的 Resize 与 Crop 原理（SVG / PDF / EPS/PS）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.6; color: #1f2328; padding: 24px; max-width: 900px; margin: 0 auto; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.35rem; margin-top: 1.6em; }
+    h3 { font-size: 1.1rem; margin-top: 1.2em; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background: #f6f8fa; border-radius: 6px; }
+    code { padding: 0 4px; }
+    pre { padding: 12px; overflow: auto; }
+    .note { background: #f6f8fa; border-left: 4px solid #0969da; padding: 10px 12px; border-radius: 6px; }
+    ul { margin: 0.6em 0 0.8em 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>矢量图的 Resize 与 Crop 原理（SVG / PDF / EPS/PS）</h1>
+
+  <p>本页科普矢量图在不同格式下的 <b>resize（缩放）</b> 与 <b>crop（裁剪）</b> 原理、常见陷阱，以及含有内嵌栅格（bitmap）的处理策略。理解这些机制，有助于在不损失矢量质量的前提下获得所需的显示与输出效果。</p>
+
+  <h2>基础概念</h2>
+  <ul>
+    <li><b>矢量（Vector）</b>：路径、文本、图形由数学描述，理论上无分辨率限制。</li>
+    <li><b>栅格（Raster/Bitmap）</b>：像素图，放大后会变模糊，需通过上采样与增强改善观感。</li>
+    <li><b>缩放（Resize/Scale）</b>：改变内容的显示尺寸；对矢量是参数/变换变化；对栅格是像素重采样。</li>
+    <li><b>裁剪（Crop）</b>：限制显示区域的“窗口”；大多数情况下<b>非破坏性</b>，不删除被遮蔽的内容。</li>
+  </ul>
+
+  <h2>SVG 的缩放与裁剪</h2>
+  <ul>
+    <li><b>缩放</b>：通过调整 <code>width</code>/<code>height</code> 或全局变换（transform），等比或非等比都可。<code>viewBox</code> 定义了内部坐标系到外部尺寸的映射。</li>
+    <li><b>裁剪</b>：常见做法是调整 <code>viewBox</code>，等价于改变“显示视窗”。注意这<b>不会删除</b>视窗外内容。</li>
+    <li><b>内嵌栅格</b>：由 <code>&lt;image&gt;</code> 引入。全局缩放时与路径一同等比缩放，但不会“变清晰”；若需更清晰，需提取位图→上采样/增强→再嵌回。</li>
+  </ul>
+
+  <h2>PDF 的缩放与裁剪</h2>
+  <ul>
+    <li><b>页面盒（Boxes）</b>：
+      <ul>
+        <li><b>MediaBox</b>：页面物理尺寸（画布）。</li>
+        <li><b>CropBox</b>：显示/导出区域，阅读器通常以它作为视窗。</li>
+        <li>另有 <b>TrimBox/BleedBox/ArtBox</b> 等，面向印前流程。</li>
+      </ul>
+    </li>
+    <li><b>裁剪</b>：设置 <code>CropBox</code>（必要时同步 <code>MediaBox</code>），即可得到期望的显示区域；这是<b>非破坏性</b>裁剪。</li>
+    <li><b>缩放</b>：矢量内容分辨率无关，缩放通常通过变换矩阵或输出渲染时指定像素尺寸/DPI 实现。</li>
+    <li><b>内嵌栅格</b>：作为 XObject/Image 存在。全局缩放时一并缩放但不提清晰度；若需更清晰，需提取位图→上采样/增强→再嵌回，保持原变换矩阵与位置。</li>
+  </ul>
+
+  <h2>EPS/PS 的缩放与裁剪</h2>
+  <ul>
+    <li><b>裁剪</b>：<code>%%BoundingBox: llx lly urx ury</code> 定义显示区域（单位 pt，1 pt=1/72 in）。修改 BoundingBox 改变“视窗”，<b>不删除</b>超出内容。若需物理裁切，可在内容前添加 <code>clip</code> 路径。</li>
+    <li><b>缩放</b>：仅改 BoundingBox 不会缩放内容；应在绘制前加入 PostScript <code>scale</code> 操作符（如 <code>1.5 1.5 scale</code>），并同步按比例更新 BoundingBox。支持非等比，如 <code>2 1.5 scale</code>。</li>
+    <li><b>内嵌栅格</b>：通过 <code>image</code>/<code>colorimage</code>/<code>imagemask</code> 指令与矩阵嵌入。全局 <code>scale</code> 会等比放大显示，但不提升清晰度；若需更清晰，需解析 image 数据→上采样/增强→回写，并保持矩阵一致。</li>
+  </ul>
+
+  <h2>“非破坏性裁剪”的共性</h2>
+  <p>SVG 的 <code>viewBox</code>、PDF 的 <code>CropBox</code>、EPS 的 <code>BoundingBox</code> 都是<b>显示窗口</b>的概念：
+  它们通常<b>不删除</b>窗口外的内容，只是“遮住”。对版面与导入流程而言，这已足够；如需真正删除数据，需做内容级编辑。</p>
+
+  <h2>含内嵌栅格的“混合矢量”处理</h2>
+  <ul>
+    <li><b>全局缩放</b>：布局与相对位置保持不变（路径、文本、位图一起缩放）。位图不会自动变清晰，仅被拉伸显示。</li>
+    <li><b>提清策略</b>：
+      <ol>
+        <li>解析图形：SVG &lt;image&gt;；PDF XObject/Image；EPS <code>image</code> 指令。</li>
+        <li>提取位图数据，解码为图像。</li>
+        <li>上采样（Lanczos/超分辨率）+ 锐化/去噪/对比度增强。</li>
+        <li>重新编码并嵌回，保持原有位置与变换矩阵不变。</li>
+      </ol>
+    </li>
+    <li><b>风险点</b>：仅更换位图尺寸而未同步矩阵，可能导致错位；务必保持嵌入矩阵与目标像素尺寸一致。</li>
+  </ul>
+
+  <h2>ImBridge 当前实现与建议</h2>
+  <ul>
+    <li><b>SVG</b>：通过修改 <code>width/height</code> 与 <code>viewBox</code> 实现缩放/裁剪，保持为矢量输出。</li>
+    <li><b>PDF</b>：通过设置 <code>CropBox/MediaBox</code> 实现裁剪；缩放由渲染器在导出时决定像素尺寸。</li>
+    <li><b>EPS/PS</b>：为降低风险，采用 <b>EPS/PS → PDF → 处理 → 回转</b> 的流程，并提示可能存在忠实度损失。</li>
+    <li><b>预览</b>：为显示一致性，预览时将矢量转为位图渲染，不影响矢量输出质量。</li>
+    <li><b>混合矢量位图增强</b>：当前默认<b>不自动</b>提取/增强内嵌位图；如需更清晰，可先对原位图素材增强后再嵌入，或后续使用高级选项。</li>
+  </ul>
+
+  <h2>实务建议与最佳实践</h2>
+  <ul>
+    <li><b>保持等比缩放</b>：除非有意变形，x、y 比例应相同。</li>
+    <li><b>尽量原生处理</b>：优先在源格式（如 SVG/PDF）上进行参数级修改，避免无谓的格式往返转换。</li>
+    <li><b>DPI 仅影响位图导出</b>：矢量自身无 DPI 概念，只有在栅格化导出时才需要指定。</li>
+    <li><b>裁剪多为非破坏</b>：若需真正删除内容，必须做内容级编辑或使用裁切路径。</li>
+    <li><b>单位换算</b>：PDF/EPS 多用 pt（1/72 in）；SVG 尺寸可带单位（px、pt、mm 等），<code>viewBox</code> 为无单位内部坐标。</li>
+  </ul>
+
+  <h2>术语速查</h2>
+  <ul>
+    <li><b>Raster / Bitmap</b>：栅格图像。</li>
+    <li><b>viewBox</b>（SVG）：内部坐标到显示尺寸的映射窗口。</li>
+    <li><b>MediaBox / CropBox</b>（PDF）：页面物理尺寸与显示窗口。</li>
+    <li><b>BoundingBox</b>（EPS）：显示窗口注释；<code>scale</code> 为内容级缩放。</li>
+  </ul>
+
+  <p class="note"><b>提示</b>：当你的目标只是控制版面“显示区域”，优先选择 <b>SVG: viewBox</b>、<b>PDF: CropBox</b>、<b>EPS: BoundingBox</b> 等窗口参数；当你需要实际“放大矢量内容”，才使用全局变换或对应的缩放操作，并注意对内嵌位图的清晰度策略。</p>
+
+  <p>更多格式细节可参考本仓库的 <a href="image_formats.html">Image Formats</a> 或 <a href="help.html">Help</a>。</p>
+</body>
+</html>

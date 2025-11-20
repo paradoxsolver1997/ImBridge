@@ -199,12 +199,12 @@ def vector_to_bitmap(
                 tmp_png = out_path + ".tmp.png"
                 cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
                 Image.open(tmp_png).convert("RGB").save(out_path, quality=95)
-                os.remove(tmp_png)
+                remove_temp(tmp_png)
             elif fmt == ".tiff":
                 tmp_png = out_path + ".tmp.png"
                 cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
                 Image.open(tmp_png).save(out_path, format="TIFF")
-                os.remove(tmp_png)
+                remove_temp(tmp_png)
             else:
                 raise RuntimeError(f"Unsupported bitmap format: {fmt}")
         else:
@@ -468,3 +468,13 @@ def check_tool(tool_key: str) -> bool:
         return importlib.util.find_spec(tool_key) is not None
     except Exception:
         return False
+
+
+def remove_temp(temp_path: str, log_fun=None) -> None:
+    """Remove image file from disk."""
+    try:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+    except Exception as e:
+        if log_fun:
+            log_fun(f"[vector] Failed to remove temp file {temp_path}: {e}")
