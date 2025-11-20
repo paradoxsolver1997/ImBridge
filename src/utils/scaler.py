@@ -1,16 +1,78 @@
-from PIL import Image, ImageEnhance, ImageFilter, ImageChops
-import numpy as np
+from PIL import Image, ImageEnhance, ImageFilter
 import os
 import tempfile
-import xml.etree.ElementTree as ET
-import shutil
-import subprocess
-from PyPDF2 import PdfReader, PdfWriter
-import tempfile
-from src.utils.converter import vector_to_bitmap
-from PIL import Image
+import numpy as np
 
-from src.utils.converter import remove_temp
+from src.utils.converter import vector_to_bitmap, remove_temp
+
+
+
+def grayscale_image(
+    in_path: str, out_path: str, log_fun=None, binarize: bool = False
+) -> Image.Image:
+    """
+    Turn image into grayscale, with optional contrast enhancement and binarization.
+    If the input has an alpha channel, it will be separated and restored at the end.
+    """
+
+    img = Image.open(in_path)
+
+    is_bw = img.mode == "1" or (img.mode == "L" and set(img.getextrema()) <= {0, 255})
+    if not is_bw:
+
+        if img.mode == "RGBA":
+            if log_fun:
+                log_fun("  [contrast] split alpha channel")
+            rgb = img.convert("RGB")
+            alpha = img.getchannel("A")
+        else:
+            rgb = img
+            alpha = None
+
+        if log_fun:
+            log_fun("  [contrast] convert to grayscale")
+        img_gray = rgb.convert("L")
+        img_array = np.array(img_gray, dtype=np.float32)
+
+        if binarize:
+
+            def sigmoid(x, threshold=220, gain=20):
+                x = np.clip(x, 0, 255)
+                x = 255 / (1 + np.exp(-gain * (x - threshold) / 255.0))
+                x = x + 100
+                x = np.clip(x, 0, 255)
+                return x
+
+            if log_fun:
+                log_fun("  [contrast] apply sigmoid")
+            enhanced_array = sigmoid(img_array)
+            enhanced_array = np.clip(enhanced_array, 0, 255)
+            # Binarization
+            threshold = 128
+            bw_array = (enhanced_array > threshold) * 255
+            img_gray = Image.fromarray(bw_array.astype(np.uint8))
+        else:
+            img_gray = Image.fromarray(np.clip(img_array, 0, 255).astype(np.uint8))
+
+        # Restore alpha channel
+        if alpha is not None:
+            img_gray = img_gray.convert("L")
+            img_gray = Image.merge("LA", (img_gray, alpha))
+
+        img_gray.save(out_path)
+        if log_fun:
+            log_fun(
+                f"Grayscale {os.path.basename(in_path)} -> {os.path.basename(out_path)} completed."
+            )
+        return img_gray
+    else:
+        img.save(out_path)
+        if log_fun:
+            log_fun(
+                f"{os.path.basename(in_path)} is already grayscale. Directly copy to {os.path.basename(out_path)}."
+            )
+        return img
+
 
 def resize_image(
     in_path: str, out_path: str, log_fun=None, **kwargs
@@ -302,6 +364,7 @@ def resize_eps_ps(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
     img = vector_to_image(out_path) if kwargs.get('preview_flag', True) else None
     remove_temp(out_path) if not kwargs.get('save_flag', True) else None
     return img
+
 
 def vector_to_image(in_path: str):
     img = None

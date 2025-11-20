@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 import os
-from src.utils import converter
 from src.tabs.base_tab import BaseTab
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame

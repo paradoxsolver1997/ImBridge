@@ -2,8 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-from src.utils import converter
-from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 
@@ -102,11 +100,3 @@ class InkTab(BaseTab):
             ),
         ).pack(side="left", padx=4)
         
-        frm_3 = ttk.LabelFrame(
-            row_2, text="Tool Check", style="Bold.TLabelframe"
-        )
-        frm_3.pack(side="left", padx=8, pady=8, fill="both", expand=True)
-        status = "✔️" if converter.check_tool("potrace") else "❌"
-        ttk.Label(frm_3, text=f"Potrace: {status}").pack(
-            side="left", padx=(8, 4), pady=8
-        )

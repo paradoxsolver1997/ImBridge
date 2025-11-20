@@ -2,9 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-from src.utils import converter
-from src.frames.labeled_validated_entry import LabeledValidatedEntry
-from src.frames.input_output_frame import InputOutputFrame
+from src.utils.commons import check_tool
 from src.frames.title_frame import TitleFrame
 
 
@@ -36,7 +34,7 @@ class ToolTab(BaseTab):
             ("libcairo-2.dll", "libcairo-2.dll"),
         ]
         for key, label in tool_keys:
-            status = "✔️" if converter.check_tool(key) else "❌"
+            status = "✔️" if check_tool(key) else "❌"
             color = "red" if status == "❌" else "black"
             ttk.Label(tool_row, text=f"{label}: {status}", foreground=color).pack(
                 side="left", padx=(6, 8), pady=8
@@ -47,7 +45,7 @@ class ToolTab(BaseTab):
             self, text="Tool Check", style="Bold.TLabelframe"
         )
         frm_3.pack(side="left", padx=8, pady=8, fill="both", expand=True)
-        status = "✔️" if converter.check_tool("potrace") else "❌"
+        status = "✔️" if check_tool("potrace") else "❌"
         ttk.Label(frm_3, text=f"Potrace: {status}").pack(
             side="left", padx=(8, 4), pady=8
         )

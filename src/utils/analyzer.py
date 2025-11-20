@@ -1,15 +1,9 @@
 from PIL import Image
 import os
 import base64
-from reportlab.pdfgen import canvas
-import subprocess
 from typing import Optional, Dict, Any, Callable
 import tempfile
-import shutil
-import re
 from xml.etree import ElementTree as ET
-import json
-import importlib
 
 from src.utils.converter import ps_eps_to_svg
 
@@ -52,67 +46,6 @@ def vector_analyzer(
         log_fun(msg)
     return result
 
-'''
-def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
-    """
-    Analyze PDF files for pure vector, pure raster, or mixed graphics, and count paths, images, and image sizes.
-    """
-    try:
-        import PyPDF2
-    except ImportError:
-        raise ImportError("PyPDF2 is required for PDF analysis")
-    result = {
-        "type": "unknown",
-        "num_paths": 0,
-        "num_images": 0,
-        "images": [],
-    }
-    import io
-    with open(pdf_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            # Count XObject images
-            xobjects = page.get("/Resources", {}).get("/XObject", {})
-            if xobjects:
-                for obj in xobjects:
-                    result["num_images"] += 1
-                    img_obj = xobjects[obj]
-                    w = img_obj.get("/Width", 0)
-                    h = img_obj.get("/Height", 0)
-                    real_w, real_h = None, None
-                    # 尝试解码图像流
-                    try:
-                        if img_obj.get("/Subtype") == "/Image":
-                            data = img_obj.get_data()
-                            with Image.open(io.BytesIO(data)) as im:
-                                real_w, real_h = im.width, im.height
-                    except Exception:
-                        real_w, real_h = None, None
-                    result["images"].append({
-                        "name": obj,
-                        "width": w,
-                        "height": h,
-                        "real_width": real_w,
-                        "real_height": real_h
-                    })
-            # Count paths (rough: look for path operators)
-            content = page.get_contents()
-            if content:
-                try:
-                    data = content.get_data().decode("latin1")
-                    path_ops = len(re.findall(r"\b[mclhvqz]\b", data, re.I))
-                    result["num_paths"] += path_ops
-                except Exception:
-                    pass
-    # Type determination
-    if result["num_images"] > 0 and result["num_paths"] > 0:
-        result["type"] = "mixed"
-    elif result["num_images"] > 0:
-        result["type"] = "raster"
-    elif result["num_paths"] > 0:
-        result["type"] = "vector"
-    return result
-'''
 
 def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
     """

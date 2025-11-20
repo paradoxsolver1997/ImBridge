@@ -2,12 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-import src.utils.resize as rz
+import src.utils.scaler as sc
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
-
-from PIL import Image
 
 
 class ResizeTab(BaseTab):
@@ -312,13 +310,13 @@ class ResizeTab(BaseTab):
 
         img = None
         if ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
-            img = rz.resize_image(in_path, out_path, log_fun=self.logger.info, **params)
+            img = sc.resize_image(in_path, out_path, log_fun=self.logger.info, **params)
         elif ext == '.svg':
-            img = rz.resize_svg(in_path, out_path, log_fun=self.logger.info, **params)
+            img = sc.resize_svg(in_path, out_path, log_fun=self.logger.info, **params)
         elif ext == '.pdf':
-            img = rz.resize_pdf(in_path, out_path, log_fun=self.logger.info, **params)
+            img = sc.resize_pdf(in_path, out_path, log_fun=self.logger.info, **params)
         elif ext in ['.eps', '.ps']:
-            img = rz.resize_eps_ps(in_path, out_path, log_fun=self.logger.info, **params)
+            img = sc.resize_eps_ps(in_path, out_path, log_fun=self.logger.info, **params)
         
         self.preview_frame.clear_preview()
         self.preview_frame.show_image(img)
