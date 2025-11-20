@@ -4,6 +4,7 @@ Uses Pillow for most bitmap format conversions and pillow-heif for HEIC/HEIF dec
 """
 
 from PIL import Image
+import pillow_heif
 import os
 import base64
 from reportlab.pdfgen import canvas
@@ -45,7 +46,7 @@ def bitmap_to_bitmap(
 def embed_bitmap_to_vector(
     in_path: str,
     out_path: str,
-    dpi: int = 300,
+    dpi: int = 72,
     log_fun: Optional[Callable[[str], None]] = None,
 ) -> None:
     """
@@ -136,7 +137,7 @@ def bmp_to_vector(
 def vector_to_bitmap(
     in_path: str,
     out_path: str,
-    dpi: int = 600,
+    dpi: Optional[int] = None,
     gs_path: Optional[str] = None,
     log_fun: Optional[Callable[[str], None]] = None,
 ) -> None:
@@ -146,7 +147,34 @@ def vector_to_bitmap(
     try:
         ext = os.path.splitext(in_path)[1].lower()
         fmt = os.path.splitext(out_path)[1].lower()
-        if ext in (".ps", ".eps", ".pdf"):
+        if ext in (".ps", ".eps"):
+            gs = gs_path or (
+                shutil.which("gswin64c") if check_tool("ghostscript") else None
+            )
+            if not gs:
+                raise RuntimeError(
+                    "Ghostscript executable not found; provide path in config or ensure it is on PATH"
+                )
+            device_map = {
+                ".png": "pngalpha",
+                ".jpg": "jpeg",
+                ".jpeg": "jpeg",
+                ".tiff": "tiff24nc",
+            }
+            device = device_map.get(fmt, ".pngalpha")
+            gs_cmd = [
+                gs,
+                "-dSAFER",
+                "-dBATCH",
+                "-dNOPAUSE",
+                "-dEPSCrop",
+                f"-sDEVICE={device}",
+                f"-r{dpi}",
+                f"-sOutputFile={out_path}",
+                in_path,
+            ]
+            subprocess.run(gs_cmd, check=True)
+        elif ext == ".pdf":
             gs = gs_path or (
                 shutil.which("gswin64c") if check_tool("ghostscript") else None
             )
@@ -167,7 +195,7 @@ def vector_to_bitmap(
                 "-dBATCH",
                 "-dNOPAUSE",
                 f"-sDEVICE={device}",
-                "-dEPSCrop",
+                "-dUseCropBox",
                 f"-r{dpi}",
                 f"-sOutputFile={out_path}",
                 in_path,
@@ -181,15 +209,15 @@ def vector_to_bitmap(
                     "cairosvg is required for svg -> bitmap conversion"
                 ) from e
             if fmt == ".png":
-                cairosvg.svg2png(url=in_path, write_to=out_path, dpi=dpi)
+                cairosvg.svg2png(url=in_path, write_to=out_path)
             elif fmt in (".jpg", ".jpeg"):
                 tmp_png = out_path + ".tmp.png"
-                cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
+                cairosvg.svg2png(url=in_path, write_to=tmp_png)
                 Image.open(tmp_png).convert("RGB").save(out_path, quality=95)
                 remove_temp(tmp_png)
             elif fmt == ".tiff":
                 tmp_png = out_path + ".tmp.png"
-                cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
+                cairosvg.svg2png(url=in_path, write_to=tmp_png)
                 Image.open(tmp_png).save(out_path, format="TIFF")
                 remove_temp(tmp_png)
             else:

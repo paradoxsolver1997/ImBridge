@@ -4,4 +4,3 @@ pillow-heif
 numpy
 cairosvg
 reportlab
-PyPDF2

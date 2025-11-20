@@ -6,6 +6,7 @@ import tempfile
 from xml.etree import ElementTree as ET
 
 from src.utils.converter import ps_eps_to_svg
+from src.utils.commons import remove_temp
 
 
 def vector_analyzer(
@@ -26,8 +27,7 @@ def vector_analyzer(
             ps_eps_to_svg(in_path, svg_path)
             result = svg_analyzer(svg_path)
         finally:
-            if os.path.exists(svg_path):
-                os.remove(svg_path)
+            remove_temp(svg_path)
     elif ext == ".svg":
         result = svg_analyzer(in_path)
     else:

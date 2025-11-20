@@ -77,7 +77,7 @@ class ResizeTab(BaseTab):
         self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_x_factor_var,
-            bounds=(1.0, 2.0),
+            bounds=(0.001, 2.0),
             label_prefix="x",
             width=6,
         )
@@ -87,7 +87,7 @@ class ResizeTab(BaseTab):
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_y_factor_var,
-            bounds=(1.0, 2.0),
+            bounds=(0.001, 2.0),
             label_prefix="y",
             width=6,
         )
@@ -314,8 +314,10 @@ class ResizeTab(BaseTab):
         elif ext == '.svg':
             img = sc.resize_svg(in_path, out_path, log_fun=self.logger.info, **params)
         elif ext == '.pdf':
+            params.update({"dpi": self.preview_frame.dpi})
             img = sc.resize_pdf(in_path, out_path, log_fun=self.logger.info, **params)
         elif ext in ['.eps', '.ps']:
+            params.update({"dpi": self.preview_frame.dpi})
             img = sc.resize_eps_ps(in_path, out_path, log_fun=self.logger.info, **params)
         
         self.preview_frame.clear_preview()

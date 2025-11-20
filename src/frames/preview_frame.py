@@ -6,6 +6,7 @@ import os
 import tempfile
 
 from src.utils import converter
+from src.utils.commons import remove_temp
 
 
 class PreviewFrame(BaseFrame):
@@ -15,6 +16,7 @@ class PreviewFrame(BaseFrame):
         self.title = title if title is not None else "Preview"
         self.width = width
         self.height = height
+        self.dpi = 96
         # 设定固定宽度，避免被挤压到不可见
         self.configure(width=self.width)
         try:
@@ -127,17 +129,14 @@ class PreviewFrame(BaseFrame):
                 ) as tmp_png:
                     png_path = tmp_png.name
                 try:
-                    converter.vector_to_bitmap(img_path, png_path, dpi=60)
-                    with Image.open(png_path) as img:
-                        img.thumbnail((100, 100))
+                    converter.vector_to_bitmap(img_path, png_path, dpi=self.dpi)
+                    img = Image.open(png_path)
                 except Exception as ve:
-                    raise
+                    raise ve
                 finally:
-                    if os.path.exists(png_path):
-                        os.remove(png_path)
+                    remove_temp(png_path)
             else:
                 img = Image.open(img_path)
-            # self.log("Displaying preview image...")
             self.show_image(img)
             self._update_page_label()
         except Exception as e:

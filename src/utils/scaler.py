@@ -1,3 +1,4 @@
+from typing import Optional
 from PIL import Image, ImageEnhance, ImageFilter
 import os
 import tempfile
@@ -166,22 +167,6 @@ def resize_svg(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
         height = int(float(root.get("height")))
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
-
-    if 'new_width' in kwargs and 'new_height' in kwargs:
-        new_width = int(kwargs['new_width'])
-        new_height = int(kwargs['new_height'])
-        scale_x = new_width / width
-        scale_y = new_height / height
-    elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-        scale_x = float(kwargs['scale_x'])
-        scale_y = float(kwargs['scale_y'])
-        new_width = int(width * scale_x)
-        new_height = int(height * scale_y)
-    else:
-        scale_x = 1.0
-        scale_y = 1.0
-        new_width = width
-        new_height = height
     
     try:
         svg_ns = "http://www.w3.org/2000/svg"
@@ -200,11 +185,12 @@ def resize_svg(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
             if log_fun:
                 log_fun(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})")
             root.set("viewBox", f"{x} {y} {w} {h}")
-            root.set("width", str(new_width))
-            root.set("height", str(new_height))
+            root.set("width", str(w))
+            root.set("height", str(h))
         else:
-            root.set("width", str(new_width))
-            root.set("height", str(new_height))
+            root.set("width", str(w))
+            root.set("height", str(h))
+        log_fun(f"[vector] Scaling SVG to ({w},{h})") if log_fun else None
         tree.write(out_path, encoding="utf-8", xml_declaration=True)
         log_fun(f"[vector] SVG saved to {out_path}") if log_fun else None
         img = vector_to_image(out_path) if kwargs.get('preview_flag', True) else None
@@ -216,7 +202,7 @@ def resize_svg(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
 
 
 def resize_pdf(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
-
+    dpi = kwargs.get('dpi')
     # 用PyMuPDF整体缩放纯矢量PDF内容
     try:
         import fitz  # PyMuPDF
@@ -228,9 +214,10 @@ def resize_pdf(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
             orig_width = rect.width
             orig_height = rect.height
             # 计算缩放因子
+ 
             if 'new_width' in kwargs and 'new_height' in kwargs:
-                target_width = float(kwargs['new_width'])
-                target_height = float(kwargs['new_height'])
+                target_width = float(kwargs['new_width']) / dpi * 72
+                target_height = float(kwargs['new_height']) / dpi * 72
                 scale_x = target_width / orig_width
                 scale_y = target_height / orig_height
             elif 'scale_x' in kwargs and 'scale_y' in kwargs:
@@ -261,10 +248,10 @@ def resize_pdf(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
             if 'crop_box' in kwargs and kwargs['crop_box'] is not None:
                 crop_box = kwargs['crop_box']
                 # crop_box: (left, top, right, bottom)
-                x = float(crop_box[0])
-                y = float(crop_box[1])
-                w = float(crop_box[2]) - float(crop_box[0])
-                h = float(crop_box[3]) - float(crop_box[1])
+                x = float(crop_box[0])  / dpi * 72
+                y = float(crop_box[1])  / dpi * 72
+                w = float(crop_box[2] - crop_box[0]) / dpi * 72
+                h = float(crop_box[3] - crop_box[1]) / dpi * 72
                 # page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
                 new_page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
                 if log_fun:
@@ -279,7 +266,7 @@ def resize_pdf(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
         new_doc.close()
         if log_fun:
             log_fun(f"[vector] PDF saved to {out_path}")
-        img = vector_to_image(out_path) if kwargs.get('preview_flag', True) else None
+        img = vector_to_image(out_path, kwargs.get('dpi')) if kwargs.get('preview_flag', True) else None
         remove_temp(out_path) if not kwargs.get('save_flag', True) else None
         return img
     except Exception as e:
@@ -295,83 +282,52 @@ def resize_eps_ps(in_path: str, out_path: str, log_fun=None, **kwargs) -> None:
     2. 在PostScript主体前插入scale操作符
     3. 写入新文件
     """
+    dpi = kwargs.get('dpi')
     import re
     with open(in_path, 'r', encoding='utf-8', errors='ignore') as f:
         lines = f.readlines()
     # 查找并解析BoundingBox
     bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
     bbox_idx = None
-    bbox_vals = None
     for idx, line in enumerate(lines):
         m = bbox_pat.match(line)
         if m:
             bbox_idx = idx
-            bbox_vals = [int(m.group(i)) for i in range(1, 5)]
             break
-    if bbox_vals is None:
-        raise ValueError("No %%BoundingBox found in EPS/PS file.")
-    llx, lly, urx, ury = bbox_vals
-    width = urx - llx
-    height = ury - lly
-    # 计算缩放因子
-    import math
-    import sys
-    kwargs = locals().get('kwargs', {})
-    if 'new_width' in kwargs and 'new_height' in kwargs:
-        new_width = int(kwargs['new_width'])
-        new_height = int(kwargs['new_height'])
-        scale_x = new_width / width if width != 0 else 1.0
-        scale_y = new_height / height if height != 0 else 1.0
-    elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-        scale_x = float(kwargs['scale_x'])
-        scale_y = float(kwargs['scale_y'])
-        new_width = int(width * scale_x)
-        new_height = int(height * scale_y)
+    # 仅支持crop_box裁剪
+    if 'crop_box' in kwargs and kwargs['crop_box'] is not None and dpi:
+        crop_box = kwargs['crop_box']
+        # crop_box: (left, top, right, bottom)
+        new_llx = float(crop_box[0]) / dpi * 72
+        new_lly = float(crop_box[1]) / dpi * 72
+        new_urx = float(crop_box[2]) / dpi * 72
+        new_ury = float(crop_box[3]) / dpi * 72
+        new_bbox = f"%%BoundingBox: {int(new_llx)} {int(new_lly)} {int(new_urx)} {int(new_ury)}\n"
+        lines[bbox_idx] = new_bbox
+        # 不再插入scale操作符
+        # 写入新文件
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        log_fun(f"[vector] EPS/PS cropped to BoundingBox {new_bbox.strip()}, saved to {out_path}") if log_fun else None
+        img = vector_to_image(out_path, kwargs.get('dpi')) if kwargs.get('preview_flag', True) else None
+        remove_temp(out_path) if not kwargs.get('save_flag', True) else None
+        return img
     else:
-        scale_x = 1.0
-        scale_y = 1.0
-        new_width = width
-        new_height = height
-    # 计算新BoundingBox
-    new_llx = int(llx * scale_x)
-    new_lly = int(lly * scale_y)
-    new_urx = int(urx * scale_x)
-    new_ury = int(ury * scale_y)
-    new_bbox = f"%%BoundingBox: {new_llx} {new_lly} {new_urx} {new_ury}\n"
-    # 替换BoundingBox
-    lines[bbox_idx] = new_bbox
-    # 查找插入点：通常在%%EndComments后或%%EndProlog后插入scale
-    insert_idx = None
-    for idx, line in enumerate(lines):
-        if line.strip().startswith("%%EndProlog"):
-            insert_idx = idx + 1
-            break
-    if insert_idx is None:
-        for idx, line in enumerate(lines):
-            if line.strip().startswith("%%EndComments"):
-                insert_idx = idx + 1
-                break
-    if insert_idx is None:
-        # fallback: after BoundingBox
-        insert_idx = bbox_idx + 1
-    # scale操作符
-    scale_cmd = f"{scale_x} {scale_y} scale\n"
-    lines.insert(insert_idx, scale_cmd)
-    # 写入新文件
-    with open(out_path, 'w', encoding='utf-8') as f:
-        f.writelines(lines)
-    log_fun(f"[vector] EPS/PS scaled by ({scale_x},{scale_y}), BoundingBox updated to {new_bbox.strip()}, saved to {out_path}") if log_fun else None
-    img = vector_to_image(out_path) if kwargs.get('preview_flag', True) else None
-    remove_temp(out_path) if not kwargs.get('save_flag', True) else None
-    return img
+        # 未指定crop_box，直接复制原文件
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        log_fun(f"[vector] EPS/PS copied without crop, saved to {out_path}") if log_fun else None
+        img = vector_to_image(out_path, kwargs.get('dpi')) if kwargs.get('preview_flag', True) else None
+        remove_temp(out_path) if not kwargs.get('save_flag', True) else None
+        return img
 
 
-def vector_to_image(in_path: str):
+def vector_to_image(in_path: str, dpi: Optional[int] = None) -> Image.Image:
     img = None
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_png:
         png_path = tmp_png.name
     try:
-        vector_to_bitmap(in_path, png_path)
+        vector_to_bitmap(in_path, png_path, dpi=dpi)
         img = Image.open(png_path)
         img.load()  # 强制读取到内存
     finally:

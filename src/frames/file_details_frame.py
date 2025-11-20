@@ -110,103 +110,87 @@ class FileDetailsFrame(BaseFrame):
 
     def read_image_meta(self, path):
         meta = {}
-        '''
-        try:
-            fsize = os.path.getsize(path)
-            meta['文件大小'] = f'{fsize // 1024} KB'
-            mtime = os.path.getmtime(path)
-            meta['修改时间'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
-        except Exception as e:
-            meta['文件大小'] = '读取失败'
-            meta['修改时间'] = '-'
-        '''
         typ, cat = self.sniff_type(path)
-        meta['类型'] = typ
-        meta['类别'] = cat
-        meta['绝对路径'] = path
+        meta['Format'] = typ
+        meta['Category'] = cat
+        meta['Location'] = path
+        # 位图：显示像素尺寸（px）
         if cat == 'Raster' and typ not in ('PDF','SVG','EPS'):
             try:
                 with Image.open(path) as im:
-                    w,h = im.size
-                    meta['像素尺寸'] = f'{w} × {h}'
-                    dpi = im.info.get('dpi') or im.info.get('jfif_density')
-                    if dpi and isinstance(dpi,(tuple,list)) and len(dpi)>=2:
-                        xdpi, ydpi = dpi[0], dpi[1]
-                    else:
-                        xdpi = ydpi = None
-                    if xdpi and ydpi:
-                        meta['DPI'] = f'{xdpi} × {ydpi}'
-                        meta['物理尺寸'] = f'{w/xdpi*2.54:.2f} × {h/ydpi*2.54:.2f} cm'
-                    else:
-                        meta['DPI'] = 'N/A'
-                        meta['物理尺寸'] = f'估算(72DPI): {w/72*2.54:.2f} × {h/72*2.54:.2f} cm'
+                    w, h = im.size
+                    meta['Size'] = f'{w} × {h} px'
             except Exception as e:
-                meta['像素尺寸'] = '读取失败'
-                meta['DPI'] = 'N/A'
-                meta['物理尺寸'] = '-'
-        elif cat == 'Vector':
-            # 使用矢量分析器获取 Vector/Mixed/Raster 细节
+                meta['Size'] = '读取失败'
+        # PDF/EPS/PS：显示物理尺寸（cm）
+        elif typ in ('PDF','EPS','PS'):
+            try:
+                if typ == 'PDF':
+                    reader = PdfReader(path)
+                    page = reader.pages[0]
+                    width_pt = float(page.mediabox.width)
+                    height_pt = float(page.mediabox.height)
+                else:
+                    # EPS/PS 需解析BoundingBox
+                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                        import re
+                        bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
+                        for line in f:
+                            m = bbox_pat.match(line)
+                            if m:
+                                llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
+                                width_pt = urx - llx
+                                height_pt = ury - lly
+                                break
+                        else:
+                            width_pt = height_pt = None
+                if width_pt and height_pt:
+                    width_in = width_pt/72
+                    height_in = height_pt/72
+                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
+                else:
+                    meta['Size'] = 'N/A'
+            except Exception:
+                meta['Size'] = 'N/A'
+        # SVG：优先用width/height属性（px），否则N/A
+        elif typ == 'SVG':
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(path)
+                root = tree.getroot()
+                w = root.get('width')
+                h = root.get('height')
+                if w and h:
+                    meta['Size'] = f'{w} × {h} px'
+                else:
+                    meta['Size'] = 'N/A'
+            except Exception:
+                meta['Size'] = 'N/A'
+        # 其它情况
+        else:
+            meta['Size'] = 'N/A'
+        # 矢量分析器补充信息
+        if cat == 'Vector':
             try:
                 analysis = vector_analyzer(path)
             except Exception:
                 analysis = None
-
             if analysis:
                 ana_type = analysis.get('type', 'unknown').title()
                 if ana_type in ('Vector','Mixed','Raster'):
-                    meta['类别'] = ana_type
-                # 路径与栅格统计
+                    meta['Category'] = ana_type
                 if 'num_paths' in analysis:
-                    meta['路径数量'] = analysis.get('num_paths', 0)
+                    meta['Embedded Paths'] = analysis.get('num_paths', 0)
                 if ana_type in ('Mixed','Raster'):
                     num_images = analysis.get('num_images', 0)
-                    meta['栅格图数量'] = num_images
+                    meta['Embedded Images'] = num_images
                     if num_images:
                         sizes = []
                         for iminfo in analysis.get('images', []):
                             rw = iminfo.get('real_width') or iminfo.get('width') or '?'
                             rh = iminfo.get('real_height') or iminfo.get('height') or '?'
-                            sizes.append(f"{rw}x{rh}")
-                        meta['栅格图尺寸'] = ', '.join(sizes) if sizes else '-'
-                # PDF 物理尺寸（无论 Vector/Mixed/Raster皆可给出页面物理尺寸）
-                if typ == 'PDF':
-                    try:
-                        reader = PdfReader(path)
-                        page = reader.pages[0]
-                        width_pt = float(page.mediabox.width)
-                        height_pt = float(page.mediabox.height)
-                        width_in = width_pt/72
-                        height_in = height_pt/72
-                        meta.setdefault('像素尺寸', 'N/A')
-                        meta.setdefault('DPI', 'N/A')
-                        meta['物理尺寸'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
-                    except Exception:
-                        meta['物理尺寸'] = meta.get('物理尺寸', '-')
-                else:
-                    meta.setdefault('像素尺寸', 'N/A')
-                    meta.setdefault('DPI', 'N/A')
-                    meta.setdefault('物理尺寸', '-')
-            else:
-                # 分析失败时的回退：尽量提供PDF物理尺寸
-                if typ == 'PDF':
-                    try:
-                        reader = PdfReader(path)
-                        page = reader.pages[0]
-                        width_pt = float(page.mediabox.width)
-                        height_pt = float(page.mediabox.height)
-                        width_in = width_pt/72
-                        height_in = height_pt/72
-                        meta['像素尺寸'] = 'N/A'
-                        meta['DPI'] = 'N/A'
-                        meta['物理尺寸'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
-                    except Exception:
-                        meta['物理尺寸'] = '-'
-                        meta['像素尺寸'] = 'N/A'
-                        meta['DPI'] = 'N/A'
-        else:
-            meta['像素尺寸'] = 'N/A'
-            meta['DPI'] = 'N/A'
-            meta['物理尺寸'] = '-'
+                            sizes.append(f"{rw}x{rh} px")
+                        meta['Image Sizes'] = ', '.join(sizes) if sizes else '-'
         return meta
 
     # 详情面板内容刷新
