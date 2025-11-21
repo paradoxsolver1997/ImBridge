@@ -98,7 +98,7 @@ def bitmap_to_svg(in_path: str, out_path: str) -> None:
         )
 
 
-def bmp_to_vector(
+def bmp_to_svg(
     in_path: str, 
     out_path: str, 
     log_fun: Optional[Callable[[str], None]] = None
@@ -115,9 +115,7 @@ def bmp_to_vector(
     if not potrace_exe:
         raise RuntimeError('potrace.exe not found in PATH; please install and configure the environment variable')
 
-    if out_fmt not in ['eps', 'svg', 'pdf', 'ps']:
-        raise RuntimeError(f'Unsupported output format for potrace: {out_fmt}')
-    # potrace only supports BMP input
+    assert out_fmt == 'svg'
 
     ext = os.path.splitext(in_path)[1].lower()
     if ext != '.bmp':
@@ -261,8 +259,18 @@ def vector_to_vector(
             ext_out.lstrip(".") if out_fmt is None else out_fmt.lstrip(".").lower()
         )
 
+        # eps -> eps
+        if fmt_in == "eps" and fmt_out == "eps":
+            wash_eps_ps(in_path, out_path)
+        # ps -> ps
+        elif fmt_in == "ps" and fmt_out == "ps":
+            wash_eps_ps(in_path, out_path)
+        # pdf -> pdf
+        elif fmt_in == "pdf" and fmt_out == "pdf":
+            import shutil
+            shutil.copy2(in_path, out_path)
         # svg -> pdf
-        if fmt_in == "svg" and fmt_out == "pdf":
+        elif fmt_in == "svg" and fmt_out == "pdf":
             svg_to_pdf(in_path, out_path)
         # svg -> eps
         elif fmt_in == "svg" and fmt_out == "eps":

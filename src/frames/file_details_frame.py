@@ -6,16 +6,16 @@ import time
 import os
 from PIL import Image
 from src.utils.analyzer import vector_analyzer
+from src.utils.commons import get_pdf_size_pt, get_ps_size_pt
 from PyPDF2 import PdfReader
 # 缓存元数据，避免重复I/O
 
 
 class FileDetailsFrame(BaseFrame):
-    def __init__(self, parent, file_list, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.list_window = parent
         self._file_meta_cache = {}
-        self.file_list = file_list
         self.build_contents()
 
     def build_contents(self):
@@ -42,38 +42,39 @@ class FileDetailsFrame(BaseFrame):
         self.preview_frame.bind('<<PreviewPageChanged>>', self._on_preview_page_changed)
         
         # 关闭按钮
-        btn = ttk.Button(main_frame, text="关闭", command=self.list_window.destroy)
+        btn = ttk.Button(main_frame, text="关闭", command=self.list_window.withdraw())
         btn.pack(pady=(0, 6), anchor="e")
+        self.populate_file_list([])
 
-        # 获取文件列表
-        file_list = [f for f in self.file_list if f]
-
-        # 填充Treeview
-        for f in file_list:
-            if os.path.isfile(f):
-                try:
-                    size_kb = os.path.getsize(f) // 1024
-                    mtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(f)))
-                    self.tree.insert("", "end", iid=f, values=(os.path.basename(f), size_kb, mtime))
-                except Exception as e:
-                    self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "读取失败", str(e)))
-            else:
-                self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "不存在", "-"))
-
+    def populate_file_list(self, file_list=[]):
+        
         # --- 预览Frame队列初始化 ---
         self.preview_frame.clear_file_queue()
-        for f in file_list:
-            if os.path.isfile(f):
-                self.preview_frame.add_file_to_queue(f)
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-        self.tree.bind("<<TreeviewSelect>>", self.on_select)
-
-        # 默认选中第一个
         if file_list:
-            self.tree.selection_set(file_list[0])
-            self.show_details(file_list[0])
-            # 预览Frame同步到第一个文件
-            self._sync_preview_to_file(file_list[0])
+            # 填充Treeview
+            for f in file_list:
+                if os.path.isfile(f):
+                    try:
+                        size_kb = os.path.getsize(f) // 1024
+                        mtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(f)))
+                        self.tree.insert("", "end", iid=f, values=(os.path.basename(f), size_kb, mtime))
+                        self.preview_frame.add_file_to_queue(f)
+                    except Exception as e:
+                        self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "读取失败", str(e)))
+                else:
+                    self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "不存在", "-"))
+        
+            self.tree.bind("<<TreeviewSelect>>", self.on_select)
+
+            # 默认选中第一个
+            if file_list:
+                self.tree.selection_set(file_list[0])
+                self.show_details(file_list[0])
+                # 预览Frame同步到第一个文件
+                self._sync_preview_to_file(file_list[0])
     
     def _sync_preview_to_file(self, file_path):
         """
@@ -126,28 +127,13 @@ class FileDetailsFrame(BaseFrame):
         elif typ in ('PDF','EPS','PS'):
             try:
                 if typ == 'PDF':
-                    reader = PdfReader(path)
-                    page = reader.pages[0]
-                    width_pt = float(page.mediabox.width)
-                    height_pt = float(page.mediabox.height)
+                    width_pt, height_pt = get_pdf_size_pt(path)
                 else:
-                    # EPS/PS 需解析BoundingBox
-                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                        import re
-                        bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
-                        for line in f:
-                            m = bbox_pat.match(line)
-                            if m:
-                                llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
-                                width_pt = urx - llx
-                                height_pt = ury - lly
-                                break
-                        else:
-                            width_pt = height_pt = None
+                    width_pt, height_pt = get_ps_size_pt(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
-                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm'
+                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} pt)'
                 else:
                     meta['Size'] = 'N/A'
             except Exception:

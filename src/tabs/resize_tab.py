@@ -229,8 +229,41 @@ class ResizeTab(BaseTab):
         frm_6 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
         frm_6.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
+        # 旋转角度下拉菜单
+        self.rotate_angle_var = tk.IntVar(value=0)
+        ttk.Label(frm_6, text="Rotate (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
+        self.rotate_angle_combo = ttk.Combobox(
+            frm_6,
+            textvariable=self.rotate_angle_var,
+            values=[0, 90, 180, 270],
+            state="readonly",
+            width=6
+        )
+        self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
+
+        # Flip horizontally
+        self.flip_horizontal_var = tk.BooleanVar(value=False)
+        self.flip_horizontal_check = ttk.Checkbutton(
+            frm_6,
+            text="Flip Horizontally",
+            variable=self.flip_horizontal_var
+        )
+        self.flip_horizontal_check.pack(side="top", anchor="w", padx=6, pady=(0,4))
+
+        # Flip vertically
+        self.flip_vertical_var = tk.BooleanVar(value=False)
+        self.flip_vertical_check = ttk.Checkbutton(
+            frm_6,
+            text="Flip Vertically",
+            variable=self.flip_vertical_var
+        )
+        self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
+
+        frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+
         # --- Preview 按钮 ---
-        preview_btn_row = ttk.Frame(frm_6)
+        preview_btn_row = ttk.Frame(frm_7)
         preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             preview_btn_row,
@@ -238,7 +271,7 @@ class ResizeTab(BaseTab):
             command=lambda: self.on_resize(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
-        save_btn_row = ttk.Frame(frm_6)
+        save_btn_row = ttk.Frame(frm_7)
         save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             save_btn_row,

@@ -13,6 +13,7 @@ class BaseFrame(ttk.Frame):
         super().__init__(parent, *args, **kwargs)
         # Common initialization logic can be added here
         self.logger = getattr(self.winfo_toplevel(), "logger", None)
+        
 
     def build_contents(self):
         pass

@@ -21,6 +21,8 @@ class InputOutputFrame(BaseFrame):
         super().__init__(parent, *args, **kwargs)
         # Input files
         
+        self.list_window = getattr(self.winfo_toplevel(), "list_window", None)
+        self.file_details_frame = getattr(self.winfo_toplevel(), "file_details_frame", None)
         frame = ttk.LabelFrame(
             self, text=self.title, style="Bold.TLabelframe"
         )
@@ -29,7 +31,7 @@ class InputOutputFrame(BaseFrame):
         input_row = ttk.Frame(frame)
         input_row.pack(fill="x", padx=0, pady=(4, 2))
         self.files_var = tk.StringVar()
-        self.files_var.trace_add("write", self.on_files_var_changed)
+        self.files_var.trace_add("write", self.refresh_file_list)
             
         ttk.Label(
             input_row, 
@@ -46,7 +48,7 @@ class InputOutputFrame(BaseFrame):
             command=self.browse_files,
         ).pack(side="left", padx=2)
         ttk.Button(
-            input_row, text="Details...", command=self.open_file_list
+            input_row, text="Details...", command=self.show_file_list
         ).pack(side="left", padx=2)
 
         # Output directory
@@ -60,8 +62,8 @@ class InputOutputFrame(BaseFrame):
         ).pack(side="left", padx=(6, 2), expand=False)
         self.out_dir_entry = ttk.Entry(output_row, textvariable=self.out_dir_var)
         self.out_dir_entry.pack(side="left", padx=(2, 2), expand=True, fill="x")
-        self.out_dir_var.trace_add("write", self.on_out_dir_var_changed)
-        self.on_out_dir_var_changed()
+        self.out_dir_var.trace_add("write", self.shift_entry_to_end)
+        self.shift_entry_to_end()
         
         ttk.Button(
             output_row, text="Select...", command=self.select_out_dir
@@ -122,19 +124,39 @@ class InputOutputFrame(BaseFrame):
             self.logger.error(f"Failed to open folder:\n{e}")
 
 
-    def open_file_list(self):
-
-        self.list_window = tk.Toplevel(self)
-        self.list_window.title(f"文件详细信息 - {self.title}")
+    def show_file_list(self):
         self.list_window.geometry(self.set_list_geometry())
-
-        self.file_details_frame = FileDetailsFrame(
-            self.list_window,
-            file_list = self.files_var.get().strip().split("\n"),
-        )
-        self.file_details_frame.pack(fill="both", expand=True)
+        self.list_window.deiconify() 
         # Initialize size, scaling, and scrollbars
-        self.logger.info("File details frame created.")
+        self.refresh_file_list()
+
+    
+    def refresh_file_list(self, *args):
+        # 当文件列表变化时，若详情窗口存在且未销毁，则刷新
+        if hasattr(self, "file_details_frame") and hasattr(self, "list_window"):
+            if self.list_window.winfo_exists():
+                # 重新加载文件列表
+                self.file_details_frame.populate_file_list(self.load_file_list())
+                self.logger.info("File details frame refreshed due to file list change.")
+
+    def load_file_list(self):
+        try:
+            file_list = [f for f in self.files_var.get().strip().split("\n") if f.strip()]
+            if not file_list or not all(os.path.isfile(f) for f in file_list):
+                self.logger.error("No valid input file selected.")
+                return
+            return file_list
+        except Exception as e:
+            self.logger.error(f"Failed to open image: {e}")
+            return []
+        
+    def shift_entry_to_end(self, *args):
+        if not os.path.exists(self.out_dir_var.get()):
+            os.makedirs(self.out_dir_var.get(), exist_ok=True)
+        try:
+            self.out_dir_entry.xview_moveto(1.0)
+        except Exception:
+            pass
 
 
     def set_list_geometry(self):
@@ -147,39 +169,4 @@ class InputOutputFrame(BaseFrame):
         # Make the popup window stick to the right side of the main window
         popup_x = main_x + main_w
         popup_y = main_y
-
         return f"{popup_w}x{popup_h}+{popup_x}+{popup_y}"
-    
-    def on_files_var_changed(self, *args):
-        # 当文件列表变化时，若详情窗口存在且未销毁，则刷新
-        if hasattr(self, "file_details_frame") and hasattr(self, "list_window"):
-            if self.list_window.winfo_exists():
-                # 重新加载文件列表
-                file_list = self.files_var.get().strip().split("\n")
-                # 重新构建 file_details_frame
-                self.file_details_frame.destroy()
-                self.file_details_frame = FileDetailsFrame(
-                    self.list_window,
-                    file_list=file_list,
-                )
-                self.file_details_frame.pack(fill="both", expand=True)
-                self.logger.info("File details frame refreshed due to file list change.")
-
-    def load_file_list(self):
-        try:
-            file_list = [f for f in self.files_var.get().strip().split("\n") if f.strip()]
-            if not file_list or not all(os.path.isfile(f) for f in file_list):
-                self.logger.error("No valid input file selected.")
-                return
-            return file_list
-        except Exception as e:
-            self.logger.error(f"Failed to open image: {e}")
-            return
-        
-    def on_out_dir_var_changed(self, *args):
-        if not os.path.exists(self.out_dir_var.get()):
-            os.makedirs(self.out_dir_var.get(), exist_ok=True)
-        try:
-            self.out_dir_entry.xview_moveto(1.0)
-        except Exception:
-            pass

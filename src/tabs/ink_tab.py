@@ -4,6 +4,7 @@ import os
 from src.tabs.base_tab import BaseTab
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
+import src.utils.scaler as sc
 
 
 class InkTab(BaseTab):
@@ -47,11 +48,17 @@ class InkTab(BaseTab):
         ttk.Button(
             frm_1,
             text="Grayscale & Save",
-            command=lambda: self.batch_convert(
-                mode="grayscale",
-                file_list=self.io_frame.files_var.get().strip().split("\n"),
-                out_dir=self.io_frame.out_dir_var.get(),
-            ),
+            command=lambda: sc.grayscale_image(
+                        in_path=self.io_frame.files_var.get().strip().split("\n")[0], 
+                        out_path=os.path.join(
+                            self.io_frame.out_dir_var.get(), 
+                            'grayscale_' + os.path.basename(
+                                self.io_frame.files_var.get().strip().split("\n")[0]
+                            )
+                        ), 
+                        log_fun=self.log,
+                        binarize=False
+                    )
         ).pack(side="left", padx=(6, 8), pady=8)
 
         # The Grayscale option
@@ -63,13 +70,18 @@ class InkTab(BaseTab):
         ttk.Button(
             frm_1,
             text="Binarize & Save",
-            command=lambda: self.batch_convert(
-                mode="binarize",
-                file_list=self.io_frame.files_var.get().strip().split("\n"),
-                out_dir=self.io_frame.out_dir_var.get(),
-            ),
+            command=lambda: sc.grayscale_image(
+                        in_path=self.io_frame.files_var.get().strip().split("\n")[0], 
+                        out_path=os.path.join(
+                            self.io_frame.out_dir_var.get(), 
+                            'binarize_' + os.path.basename(
+                                self.io_frame.files_var.get().strip().split("\n")[0]
+                            )
+                        ), 
+                        log_fun=self.log,
+                        binarize=True
+                    )
         ).pack(side="left", padx=(6, 8), pady=8)
-
 
         row_2 = ttk.Frame(self)
         row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
@@ -80,17 +92,6 @@ class InkTab(BaseTab):
         )
         frm_2.pack(side="left", padx=8, pady=8, fill="both", expand=True)
 
-        self.vector_fmt = tk.StringVar(value=".pdf")
-        ttk.Label(frm_2, text="Output format:").pack(
-            side="left", padx=(8, 4), pady=8
-        )
-        ttk.Combobox(
-            frm_2,
-            textvariable=self.vector_fmt,
-            values=[".svg", ".pdf", ".eps", ".ps"],
-            width=8,
-            state="readonly",
-        ).pack(side="left", padx=(6, 4))
         ttk.Button(
             frm_2,
             text="Vectorize & Save",
@@ -98,7 +99,7 @@ class InkTab(BaseTab):
                 mode="potrace",
                 file_list=self.io_frame.files_var.get().strip().split("\n"),
                 out_dir=self.io_frame.out_dir_var.get(),
-                out_ext=self.vector_fmt.get(),
+                out_ext=".svg",
             ),
         ).pack(side="left", padx=4)
         

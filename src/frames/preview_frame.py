@@ -6,7 +6,7 @@ import os
 import tempfile
 
 from src.utils import converter
-from src.utils.commons import remove_temp
+from src.utils.commons import remove_temp, get_pdf_size_pt, get_ps_size_pt
 
 
 class PreviewFrame(BaseFrame):
@@ -86,10 +86,11 @@ class PreviewFrame(BaseFrame):
         self.clear_preview()
         self._update_page_label()
 
-    def show_image(self, image):
+    def show_image(self, image, pt_size=None):
         try:
             img = image.copy()
-            orig_size = img.size
+            orig_size = pt_size if pt_size else img.size
+            unit = "pt" if pt_size else "px"
             self.update_idletasks()
             frame_w = self.preview_label.winfo_width()
             frame_h = self.preview_label.winfo_height()
@@ -108,9 +109,9 @@ class PreviewFrame(BaseFrame):
             self.preview_label.config(text="")  # 清除文字
             # 显示尺寸信息
             if hasattr(self, "size_label"):
-                self.size_label.config(text=f"{orig_size[0]}x{orig_size[1]}")
+                self.size_label.config(text=f"{int(orig_size[0])}x{int(orig_size[1])}"+unit)
             else:
-                self.size_label = tk.Label(self.title_frame, text=f"{orig_size[0]}x{orig_size[1]}", anchor="ne", bg="#f0f0f0")
+                self.size_label = tk.Label(self.title_frame, text=f"{int(orig_size[0])}x{int(orig_size[1])}", anchor="ne", bg="#f0f0f0")
                 self.size_label.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
             self._update_page_label()
         except Exception as e:
@@ -131,13 +132,21 @@ class PreviewFrame(BaseFrame):
                 try:
                     converter.vector_to_bitmap(img_path, png_path, dpi=self.dpi)
                     img = Image.open(png_path)
+                    if ext in (".eps", ".ps"):
+                        sz = get_ps_size_pt(img_path)
+                        self.show_image(img, pt_size=sz)
+                    elif ext == ".pdf":
+                        sz = get_pdf_size_pt(img_path)
+                        self.show_image(img, pt_size=sz)
+                    else:
+                        self.show_image(img)
                 except Exception as ve:
                     raise ve
                 finally:
                     remove_temp(png_path)
             else:
                 img = Image.open(img_path)
-            self.show_image(img)
+                self.show_image(img)
             self._update_page_label()
         except Exception as e:
             # 只清空图片和尺寸信息，不销毁按钮和页码
@@ -182,4 +191,8 @@ class PreviewFrame(BaseFrame):
             # 发送自定义翻页事件
             self.event_generate('<<PreviewPageChanged>>', when='tail')
 
-        
+    def get_queue_size(self):
+        """
+        获取当前队列大小
+        """
+        return len(self.__file_queue)

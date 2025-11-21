@@ -7,6 +7,8 @@ import shutil
 import json
 import importlib
 
+import fitz
+
 bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
 
@@ -108,3 +110,27 @@ def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Im
     elif img.mode != "RGB" and img.mode != "L":
         return img.convert("RGB")
     return img
+
+
+def get_pdf_size_pt(pdf_path):
+    with fitz.open(pdf_path) as doc:
+        page = doc[0]
+        width_pt = page.rect.width  # 单位: pt
+        height_pt = page.rect.height
+    return width_pt, height_pt
+
+
+def get_ps_size_pt(ps_path):
+    with open(ps_path, 'r', encoding='utf-8', errors='ignore') as f:
+        import re
+        bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
+        for line in f:
+            m = bbox_pat.match(line)
+            if m:
+                llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
+                width_pt = urx - llx
+                height_pt = ury - lly
+                break
+        else:
+            width_pt = height_pt = None
+    return width_pt, height_pt

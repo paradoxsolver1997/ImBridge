@@ -13,6 +13,7 @@ from src.tabs.ink_tab import InkTab
 from src.tabs.resize_tab import ResizeTab
 from src.tabs.tool_tab import ToolTab
 from src.tabs.convertion_tab import ConvertionTab
+from src.frames.file_details_frame import FileDetailsFrame
 
 
 def init_styles():
@@ -68,19 +69,20 @@ class App(tk.Tk):
         
         self.logger.set_gui_widget(self.log_frame.log_text)
 
+        self.list_window = tk.Toplevel(self)
+        self.list_window.title(f"文件详细信息 - {self.title}")
+        
+        self.file_details_frame = FileDetailsFrame(self.list_window)
+        self.file_details_frame.pack(fill="both", expand=True)
+        self.list_window.withdraw()
+
         # Create and add tabs
         convertion_tab = ConvertionTab(nb)
         nb.add(convertion_tab, text="  Convertion  ")
-        #bitmap_tab = BitmapTab(nb)
-        #nb.add(bitmap_tab, text="  Bitmap  ")
-        #vector_tab = VectorTab(nb)
-        #nb.add(vector_tab, text="  Vector  ")
         enhance_tab = InkTab(nb)
         nb.add(enhance_tab, text="  Workshop  ")
         resize_tab = ResizeTab(nb)
         nb.add(resize_tab, text="  Resize & Crop  ")
-        #resize_vector_tab = ResizeVectorTab(nb)
-        #nb.add(resize_vector_tab, text="  Resize Vector  ")
         tool_tab = ToolTab(nb)
         nb.add(tool_tab, text="  Dependencies★  ")
         about_tab = AboutTab(nb)
@@ -90,5 +92,10 @@ class App(tk.Tk):
 
     def on_tab_changed(self, event=None):
         self.preview_frame.clear_preview()
-
-    
+        nb = event.widget  # Notebook实例
+        current_tab_id = nb.select()
+        current_tab = nb.nametowidget(current_tab_id)
+        # 假设tab有io_frame和files_var
+        if hasattr(current_tab, "io_frame") and hasattr(current_tab.io_frame, "files_var"):
+            current_tab.io_frame.files_var.set(value="")
+            self.file_details_frame.populate_file_list([])

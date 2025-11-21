@@ -101,7 +101,6 @@ class ConvertionTab(BaseTab):
             bitmap_fmt_row,
             text="Convert",
             command=lambda: self.batch_convert(
-                mode="convert",
                 file_list=self.io_frame.files_var.get().strip().split("\n"),
                 out_dir=self.io_frame.out_dir_var.get(),
                 out_ext=self.out_fmt.get(),
