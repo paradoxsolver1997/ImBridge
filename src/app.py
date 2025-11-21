@@ -24,6 +24,7 @@ def init_styles():
     style.configure("TButton", font=("Segoe UI", 10))
     style.configure("TLabel", font=("Segoe UI", 10))
     style.configure("TEntry", font=("Segoe UI", 10))
+    style.configure("Info.TLabel", font=("Arial", 20), foreground="blue")
     # You can continue to add other control styles
 
 
@@ -81,7 +82,7 @@ class App(tk.Tk):
         #resize_vector_tab = ResizeVectorTab(nb)
         #nb.add(resize_vector_tab, text="  Resize Vector  ")
         tool_tab = ToolTab(nb)
-        nb.add(tool_tab, text="  External Tools★  ")
+        nb.add(tool_tab, text="  Dependencies★  ")
         about_tab = AboutTab(nb)
         nb.add(about_tab, text="  About  ")
 

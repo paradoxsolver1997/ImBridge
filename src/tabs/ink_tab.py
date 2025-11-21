@@ -23,15 +23,17 @@ class InkTab(BaseTab):
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
-        self.io_frame = InputOutputFrame(
-            self,
-            filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff")]
-        )
-        self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
+        input_filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff")]
+        parameters = {
+            "input_label": "Input Image",
+            "input_filetypes": input_filetypes,
+            "multiple_input_files": False,
+            "output_label": "Output Folder",
+            "default_output_dir": self.output_dir,
+        }
 
-        self.io_frame.out_dir_var.set(value=self.output_dir)
-        if not os.path.exists(self.io_frame.out_dir_var.get()):
-            os.makedirs(self.io_frame.out_dir_var.get(), exist_ok=True)
+        self.io_frame = InputOutputFrame(self, **parameters)
+        self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
 
         row_1 = ttk.Frame(self)
         row_1.pack(padx=(0, 0), pady=(4, 4), fill="x")

@@ -4,7 +4,6 @@ Uses Pillow for most bitmap format conversions and pillow-heif for HEIC/HEIF dec
 """
 
 from PIL import Image
-import pillow_heif
 import os
 import base64
 from reportlab.pdfgen import canvas
@@ -46,53 +45,57 @@ def bitmap_to_bitmap(
 def embed_bitmap_to_vector(
     in_path: str,
     out_path: str,
-    dpi: int = 72,
+    dpi: int = 96,
     log_fun: Optional[Callable[[str], None]] = None,
 ) -> None:
     """
     Embed bitmap into vector graphics (svg/pdf/eps) as <image> tag or embedded image.
     """
     try:
-        img = Image.open(in_path)
-        w, h = img.size
-        # Calculate physical size (inches) based on pixel dimensions and dpi
-        w_pt = w / dpi * 72
-        h_pt = h / dpi * 72
-
         fmt = os.path.splitext(out_path)[1].lower()
         if fmt == ".svg":
-            with open(in_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("ascii")
-            mime = "image/png" if in_path.lower().endswith(".png") else "image/jpeg"
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(
-                    f"""<?xml version="1.0" standalone="no"?>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">
-                            <image href="data:{mime};base64,{b64}" x="0" y="0" width="{w}" height="{h}" />
-                            </svg>
-                            """
-                )
-        elif fmt in (".pdf", ".ps"):
-            # Convert physical size (inches) to pt (1pt = 1/72 inches)
-            c = canvas.Canvas(out_path, pagesize=(w_pt, h_pt))
-            c.drawImage(in_path, 0, 0, width=w_pt, height=h_pt)
-            c.showPage()
-            c.save()
-        elif fmt == ".eps":
-            # EPS embedding can use Pillow to save as EPS, ensure mode is RGB or L
-            img = remove_alpha_channel(img)
-            img.save(out_path, format="EPS", dpi=(dpi, dpi))
+            bitmap_to_svg(in_path, out_path)
         else:
-            raise RuntimeError(f"Unsupported vector format: {fmt}")
-        if log_fun:
-            log_fun(
-                f"B2V Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded."
-            )
+            img = Image.open(in_path)
+            if fmt == ".eps":
+                # EPS embedding can use Pillow to save as EPS, ensure mode is RGB or L
+                img = remove_alpha_channel(img)
+                img.save(out_path, format="EPS", dpi=(dpi, dpi))
+            elif fmt in (".pdf", ".ps"):
+                w, h = img.size
+                # Calculate physical size (inches) based on pixel dimensions and dpi
+                w_pt = w / dpi * 72
+                h_pt = h / dpi * 72
+                # Convert physical size (inches) to pt (1pt = 1/72 inches)
+                c = canvas.Canvas(out_path, pagesize=(w_pt, h_pt))
+                c.drawImage(in_path, 0, 0, width=w_pt, height=h_pt)
+                c.showPage()
+                c.save()
+            else:
+                raise RuntimeError(f"Unsupported vector format: {fmt}")
+            if log_fun:
+                log_fun(
+                    f"B2V Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded."
+                )
     except Exception as e:
         if log_fun:
             log_fun(
                 f'B2V Conversion of {os.path.basename(in_path)} failed due to "{e}".'
             )
+
+
+def bitmap_to_svg(in_path: str, out_path: str) -> None:
+    with open(in_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
+    mime = "image/png" if in_path.lower().endswith(".png") else "image/jpeg"
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(
+            f"""<?xml version="1.0" standalone="no"?>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">
+                    <image href="data:{mime};base64,{b64}" x="0" y="0" width="{w}" height="{h}" />
+                    </svg>
+                    """
+        )
 
 
 def bmp_to_vector(
@@ -137,7 +140,7 @@ def bmp_to_vector(
 def vector_to_bitmap(
     in_path: str,
     out_path: str,
-    dpi: Optional[int] = None,
+    dpi: int = 96,
     gs_path: Optional[str] = None,
     log_fun: Optional[Callable[[str], None]] = None,
 ) -> None:
@@ -167,8 +170,8 @@ def vector_to_bitmap(
                 "-dSAFER",
                 "-dBATCH",
                 "-dNOPAUSE",
-                "-dEPSCrop",
                 f"-sDEVICE={device}",
+                "-dEPSCrop",
                 f"-r{dpi}",
                 f"-sOutputFile={out_path}",
                 in_path,
@@ -202,26 +205,7 @@ def vector_to_bitmap(
             ]
             subprocess.run(gs_cmd, check=True)
         elif ext == ".svg":
-            try:
-                import cairosvg
-            except Exception as e:
-                raise RuntimeError(
-                    "cairosvg is required for svg -> bitmap conversion"
-                ) from e
-            if fmt == ".png":
-                cairosvg.svg2png(url=in_path, write_to=out_path)
-            elif fmt in (".jpg", ".jpeg"):
-                tmp_png = out_path + ".tmp.png"
-                cairosvg.svg2png(url=in_path, write_to=tmp_png)
-                Image.open(tmp_png).convert("RGB").save(out_path, quality=95)
-                remove_temp(tmp_png)
-            elif fmt == ".tiff":
-                tmp_png = out_path + ".tmp.png"
-                cairosvg.svg2png(url=in_path, write_to=tmp_png)
-                Image.open(tmp_png).save(out_path, format="TIFF")
-                remove_temp(tmp_png)
-            else:
-                raise RuntimeError(f"Unsupported bitmap format: {fmt}")
+            svg_to_bitmap(fmt, in_path, out_path)
         else:
             raise RuntimeError(f"Unsupported input format: {ext}")
         if log_fun:
@@ -233,6 +217,29 @@ def vector_to_bitmap(
             log_fun(
                 f'V2B Conversion of {os.path.basename(in_path)} failed due to "{e}".'
             )
+
+
+def svg_to_bitmap(fmt: str, in_path: str, out_path: str) -> None:
+    try:
+        import cairosvg
+    except Exception as e:
+        raise RuntimeError(
+            "cairosvg is required for svg -> bitmap conversion"
+        ) from e
+    if fmt == ".png":
+        cairosvg.svg2png(url=in_path, write_to=out_path)
+    elif fmt in (".jpg", ".jpeg"):
+        tmp_png = out_path + ".tmp.png"
+        cairosvg.svg2png(url=in_path, write_to=tmp_png)
+        Image.open(tmp_png).convert("RGB").save(out_path, quality=95)
+        remove_temp(tmp_png)
+    elif fmt == ".tiff":
+        tmp_png = out_path + ".tmp.png"
+        cairosvg.svg2png(url=in_path, write_to=tmp_png)
+        Image.open(tmp_png).save(out_path, format="TIFF")
+        remove_temp(tmp_png)
+    else:
+        raise RuntimeError(f"Unsupported bitmap format: {fmt}")
 
 
 def vector_to_vector(
@@ -417,5 +424,32 @@ def pdf_to_ps(pdf_path: str, ps_path: str) -> None:
         ],
         check=True,
     )
+
+def wash_eps_ps(in_path: str, out_path: str) -> None:
+    """
+    Clean (normalize) an EPS or PS file using Ghostscript.
+    EPS 用 eps2write，PS 用 ps2write，输出格式与输入一致。
+    """
+    if not check_tool("ghostscript"):
+        raise RuntimeError("Ghostscript not found in PATH; required for EPS/PS cleaning")
+    gs = shutil.which("gswin64c") or shutil.which("gswin32c") or shutil.which("gs")
+    if not gs:
+        raise RuntimeError("Ghostscript executable not found")
+    ext = os.path.splitext(in_path)[1].lower()
+    if ext == ".eps":
+        device = "eps2write"
+    elif ext == ".ps":
+        device = "ps2write"
+    else:
+        raise RuntimeError("Input file must be .eps or .ps")
+    cmd = [
+        gs,
+        "-dBATCH",
+        "-dNOPAUSE",
+        f"-sDEVICE={device}",
+        f"-sOutputFile={out_path}",
+        in_path,
+    ]
+    subprocess.run(cmd, check=True)
 
 

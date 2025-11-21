@@ -4,44 +4,71 @@
         "display": "Ghostscript",
         "executables": ["gswin64c", "gswin32c", "gs"],
         "config_key": "ghostscript_path",
-        "type": "exe"
+        "type": "exe",
+        "desc": "Interpreter for PostScript and PDF files, used for rendering, conversion, and processing.",
+        "homepage": "https://www.ghostscript.com/"
     },
     {
         "key": "pstoedit",
         "display": "pstoedit",
         "executables": ["pstoedit"],
         "config_key": "pstoedit_path",
-        "type": "exe"
+        "type": "exe",
+        "desc": "Converts PostScript and PDF graphics to other vector formats such as SVG, DXF, EMF, etc.",
+        "homepage": "http://www.pstoedit.net/"
     },
     {
         "key": "cairosvg",
         "display": "cairosvg (Python)",
-        "executables": [],
+        "executables": ["cairosvg"],
         "config_key": null,
-        "type": "python"
+        "type": "python",
+        "desc": "SVG converter based on Cairo, supports SVG to PNG/PDF/PS/EPS conversion.",
+        "homepage": "https://cairosvg.org/"
     },
     {
         "key": "potrace",
         "display": "Potrace",
         "executables": ["potrace"],
         "config_key": "potrace_path",
-        "type": "exe"
+        "type": "exe",
+        "desc": "Bitmap tracing tool, converts bitmaps (BMP) to smooth, scalable images (EPS, SVG, PDF, PS).",
+        "homepage": "http://potrace.sourceforge.net/"
     },
     {
         "key": "libcairo-2.dll",
         "display": "cairosvg library",
         "executables": ["libcairo-2.dll"],
         "config_key": null,
-        "type": "dll"
-    }
-    ,
+        "type": "dll",
+        "desc": "Cairo graphics library DLL, required for cairosvg and related rendering.",
+        "homepage": "https://www.cairographics.org/"
+    },
     {
         "key": "pymupdf",
         "display": "PyMuPDF (fitz)",
-        "executables": [],
+        "executables": ["fitz"],
         "config_key": null,
         "type": "python",
-        "desc": "PDF和XPS文件的读取、分析和编辑，支持矢量与栅格内容。",
+        "desc": "Python binding for MuPDF, supports reading, analyzing, and editing PDF and XPS files, including vector and raster content.",
         "homepage": "https://pymupdf.readthedocs.io/"
+    },
+    {
+        "key": "pillow",
+        "display": "Pillow (Python)",
+        "executables": ["PIL"],
+        "config_key": null,
+        "type": "python",
+        "desc": "Python Imaging Library (PIL) fork, supports opening, manipulating, and saving many image file formats.",
+        "homepage": "https://python-pillow.org/"
+    },
+    {
+        "key": "pillow-heif",
+        "display": "pillow-heif (Python)",
+        "executables": ["pillow_heif"],
+        "config_key": null,
+        "type": "python",
+        "desc": "HEIF/HEIC image format plugin for Pillow, enables reading and writing HEIF/HEIC images in Pillow.",
+        "homepage": "https://github.com/romanmoravcik/pillow-heif"
     }
 ]

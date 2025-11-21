@@ -25,19 +25,20 @@ class ConvertionTab(BaseTab):
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
-        self.io_frame = InputOutputFrame(
-            self,
-            filetypes=[
+        input_filetypes=[
                 ("Images & Vectors", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.svg;*.pdf;*.eps;*.ps"),
                 ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff"),
                 ("Vectors", "*.svg;*.pdf;*.eps;*.ps"),
-            ],
-        )
+            ]
+        parameters = {
+            "input_label": "Input Files",
+            "input_filetypes": input_filetypes,
+            "multiple_input_files": True,
+            "output_label": "Output Folder",
+            "default_output_dir": self.output_dir,
+        }
+        self.io_frame = InputOutputFrame(self, **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
-
-        self.io_frame.out_dir_var.set(value=self.output_dir)
-        if not os.path.exists(self.io_frame.out_dir_var.get()):
-            os.makedirs(self.io_frame.out_dir_var.get(), exist_ok=True)
 
 
         # Bitmap format selection
@@ -73,7 +74,18 @@ class ConvertionTab(BaseTab):
         )
         self.quality_labeled_entry.pack(side="left", padx=(4, 4))
 
-        # DPI setting
+        
+
+        # DPI enable checkbox and setting
+        self.enable_dpi = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            bitmap_fmt_row,
+            text="Enable DPI",
+            variable=self.enable_dpi,
+            onvalue=True,
+            offvalue=False
+        ).pack(side="left", padx=(6, 2))
+
         self.dpi_var = tk.IntVar(value=300)
         self.dpi_labeled_entry = LabeledValidatedEntry(
             bitmap_fmt_row,
@@ -81,9 +93,9 @@ class ConvertionTab(BaseTab):
             bounds=(100, 600),
             label_prefix="DPI",
             width=6,
-            enable_condition=lambda: self.out_fmt.get().lower() != ".svg",
+            enable_condition=lambda: self.enable_dpi.get() and self.out_fmt.get().lower() != ".svg",
         )
-        self.dpi_labeled_entry.pack(side="left", padx=(6, 4))
+        self.dpi_labeled_entry.pack(side="left", padx=(4, 4))
 
         ttk.Button(
             bitmap_fmt_row,

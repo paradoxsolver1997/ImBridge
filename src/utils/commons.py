@@ -37,7 +37,7 @@ def check_tool(tool_key: str) -> bool:
         tool_list = json.load(f)
     tool = next((t for t in tool_list if t["key"] == tool_key), None)
     if tool:
-        if tool["type"] == "exe" and tool["executables"]:
+        if tool["type"] == "exe" and tool.get("executables"):
             exe_path = None
             for exe_name in tool["executables"]:
                 exe_path = shutil.which(exe_name)
@@ -72,18 +72,16 @@ def check_tool(tool_key: str) -> bool:
             else:
                 return True
         elif tool["type"] == "python":
-            # 支持cairosvg和pymupdf
-            if tool["key"] == "cairosvg":
-                return importlib.util.find_spec("cairosvg") is not None
-            elif tool["key"] == "pymupdf":
-                return importlib.util.find_spec("fitz") is not None
-            else:
+            # 智能检测所有python依赖项
+            import_name = tool.get("executables")[0] or tool["executables"][0]
+            try:
+                return importlib.util.find_spec(import_name) is not None
+            except Exception:
                 return False
         else:
             return False
-    # If tool_list.json does not define the key, try to detect it as一个Python包
+    # If tool_list.json does not define the key, try to detect it为Python包
     try:
-        # 兼容pymupdf: fitz为import名
         if tool_key == "pymupdf":
             return importlib.util.find_spec("fitz") is not None
         return importlib.util.find_spec(tool_key) is not None
