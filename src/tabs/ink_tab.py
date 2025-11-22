@@ -4,7 +4,7 @@ import os
 from src.tabs.base_tab import BaseTab
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
-import src.utils.scaler as sc
+import src.utils.inker as ik
 
 
 class InkTab(BaseTab):
@@ -45,61 +45,69 @@ class InkTab(BaseTab):
         )
         frm_1.pack(side="left", padx=8, pady=8, fill="both", expand=True)
 
+
+        # DPI enable checkbox and setting
+        self.binarize_flag = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            frm_1,
+            text="Enable Binarize",
+            variable=self.binarize_flag,
+            onvalue=True,
+            offvalue=False
+        ).pack(side="left", padx=(6, 2))
+
         ttk.Button(
             frm_1,
-            text="Grayscale & Save",
-            command=lambda: sc.grayscale_image(
-                        in_path=self.io_frame.files_var.get().strip().split("\n")[0], 
-                        out_path=os.path.join(
-                            self.io_frame.out_dir_var.get(), 
-                            'grayscale_' + os.path.basename(
-                                self.io_frame.files_var.get().strip().split("\n")[0]
-                            )
-                        ), 
-                        log_fun=self.log,
-                        binarize=False
-                    )
+            text="Preview",
+            command=lambda: ik.grayscale_image(
+                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
+                out_dir=self.io_frame.out_dir_var.get(),
+                binarize=self.binarize_flag.get(),
+                preview_callback=self.preview_frame.show_image,
+                save_image=False,
+                logger=self.logger,
+            )
+        ).pack(side="left", padx=(6, 8), pady=8)
+
+        ttk.Button(
+            frm_1,
+            text="Save",
+            command=lambda: ik.grayscale_image(
+                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
+                out_dir=self.io_frame.out_dir_var.get(),
+                binarize=self.binarize_flag.get(),
+                preview_callback=self.preview_frame.show_image,
+                save_image=True,
+                logger=self.logger,
+            )
         ).pack(side="left", padx=(6, 8), pady=8)
 
         # The Grayscale option
         frm_1 = ttk.LabelFrame(
-            row_1, text="Option 2. Binarize", style="Bold.TLabelframe"
+            row_1, text="Option 2. Vectorize", style="Bold.TLabelframe"
         )
         frm_1.pack(side="left", padx=8, pady=8, fill="both", expand=True)
 
         ttk.Button(
             frm_1,
-            text="Binarize & Save",
-            command=lambda: sc.grayscale_image(
-                        in_path=self.io_frame.files_var.get().strip().split("\n")[0], 
-                        out_path=os.path.join(
-                            self.io_frame.out_dir_var.get(), 
-                            'binarize_' + os.path.basename(
-                                self.io_frame.files_var.get().strip().split("\n")[0]
-                            )
-                        ), 
-                        log_fun=self.log,
-                        binarize=True
-                    )
+            text="Preview",
+            command=lambda: ik.trace_image(
+                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
+                out_dir=self.io_frame.out_dir_var.get(),
+                preview_callback=self.preview_frame.show_image,
+                save_image=False,
+                logger=self.logger,
+            )
         ).pack(side="left", padx=(6, 8), pady=8)
 
-        row_2 = ttk.Frame(self)
-        row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
-
-        # The Vectorize option
-        frm_2 = ttk.LabelFrame(
-            row_2, text="Option 3. Vectorization", style="Bold.TLabelframe"
-        )
-        frm_2.pack(side="left", padx=8, pady=8, fill="both", expand=True)
-
         ttk.Button(
-            frm_2,
-            text="Vectorize & Save",
-            command=lambda: self.batch_convert(
-                mode="potrace",
-                file_list=self.io_frame.files_var.get().strip().split("\n"),
+            frm_1,
+            text="Save",
+            command=lambda: ik.trace_image(
+                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
                 out_dir=self.io_frame.out_dir_var.get(),
-                out_ext=".svg",
-            ),
-        ).pack(side="left", padx=4)
-        
+                preview_callback=self.preview_frame.show_image,
+                save_image=True,
+                logger=self.logger,
+            )
+        ).pack(side="left", padx=(6, 8), pady=8)

@@ -207,25 +207,33 @@ def check_tool(tool_key: str) -> bool:
         return False
 
 
-def get_pdf_size_pt(pdf_path):
-    with fitz.open(pdf_path) as doc:
-        page = doc[0]
-        width_pt = page.rect.width  # 单位: pt
-        height_pt = page.rect.height
-    return width_pt, height_pt
-
-
-def get_ps_size_pt(ps_path):
-    with open(ps_path, 'r', encoding='utf-8', errors='ignore') as f:
-        import re
-        bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
-        for line in f:
-            m = bbox_pat.match(line)
-            if m:
-                llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
-                width_pt = urx - llx
-                height_pt = ury - lly
-                break
-        else:
-            width_pt = height_pt = None
-    return width_pt, height_pt
+def get_script_size(in_path):
+    """
+    获取脚本类矢量文件（pdf/ps/eps）的页面尺寸，单位pt。
+    支持PDF（用fitz）和PS/EPS（用BoundingBox）。
+    """
+    import os
+    ext = os.path.splitext(in_path)[1].lower()
+    if ext == ".pdf":
+        import fitz
+        with fitz.open(in_path) as doc:
+            page = doc[0]
+            width_pt = page.rect.width
+            height_pt = page.rect.height
+        return width_pt, height_pt
+    elif ext in (".ps", ".eps"):
+        with open(in_path, 'r', encoding='utf-8', errors='ignore') as f:
+            import re
+            bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
+            for line in f:
+                m = bbox_pat.match(line)
+                if m:
+                    llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
+                    width_pt = urx - llx
+                    height_pt = ury - lly
+                    break
+            else:
+                width_pt = height_pt = None
+        return width_pt, height_pt
+    else:
+        return None, None

@@ -6,6 +6,7 @@ import src.utils.scaler as sc
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
+from src.utils.commons import bitmap_formats
 
 
 class ResizeTab(BaseTab):
@@ -14,7 +15,7 @@ class ResizeTab(BaseTab):
         super().__init__(parent, title=title)
 
         self._preview_imgtk = None
-        self.output_dir = os.path.join(self.output_dir, "resize_output")
+        self.output_dir = os.path.join(self.output_dir, "transform_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
         self.update_mode()
@@ -245,7 +246,7 @@ class ResizeTab(BaseTab):
         self.flip_horizontal_var = tk.BooleanVar(value=False)
         self.flip_horizontal_check = ttk.Checkbutton(
             frm_6,
-            text="Flip Horizontally",
+            text="Flip Left-Right",
             variable=self.flip_horizontal_var
         )
         self.flip_horizontal_check.pack(side="top", anchor="w", padx=6, pady=(0,4))
@@ -254,7 +255,7 @@ class ResizeTab(BaseTab):
         self.flip_vertical_var = tk.BooleanVar(value=False)
         self.flip_vertical_check = ttk.Checkbutton(
             frm_6,
-            text="Flip Vertically",
+            text="Flip Top-Bottom",
             variable=self.flip_vertical_var
         )
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
@@ -334,27 +335,64 @@ class ResizeTab(BaseTab):
                 "new_height": self.height_var.get(),
             })
 
+        if self.rotate_angle_var.get() != 0:
+            params.update({
+                "rotate_angle": self.rotate_angle_var.get(),
+            })
+
+        if self.flip_horizontal_var.get():
+            params.update({
+                "flip": 'LR',
+            })
+
+        if self.flip_vertical_var.get():
+            params.update({
+                "flip": 'TB',
+            })
+
         # 根据文件类型选择不同的resize方法
         in_path = file_list[0]
         ext = os.path.splitext(in_path)[1].lower()
-        out_path = os.path.join(
-            self.io_frame.out_dir_var.get(), 
-            f"{os.path.splitext(os.path.basename(in_path))[0]}.resize{ext}")
-
-        img = None
-        if ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
-            img = sc.resize_image(in_path, out_path, log_fun=self.logger.info, **params)
+        self.preview_frame.clear_preview()
+        if ext in bitmap_formats:
+            sc.transform_image(
+                in_path, 
+                self.io_frame.out_dir_var.get(),
+                save_image=save_flag,
+                project_callback=self.preview_frame.show_image, 
+                logger=self.logger, 
+                **params)
         elif ext == '.svg':
-            img = sc.resize_svg(in_path, out_path, log_fun=self.logger.info, **params)
+            sc.transform_svg(
+                in_path, 
+                self.io_frame.out_dir_var.get(),
+                save_image=save_flag,
+                project_callback=self.preview_frame.show_image, 
+                logger=self.logger, 
+                **params)
         elif ext == '.pdf':
             params.update({"dpi": self.preview_frame.dpi})
-            img = sc.resize_pdf(in_path, out_path, log_fun=self.logger.info, **params)
+            sc.transform_pdf(
+                in_path, 
+                self.io_frame.out_dir_var.get(),
+                save_image=save_flag,
+                project_callback=self.preview_frame.show_image, 
+                logger=self.logger, 
+                **params)
         elif ext in ['.eps', '.ps']:
             params.update({"dpi": self.preview_frame.dpi})
-            img = sc.resize_eps_ps(in_path, out_path, log_fun=self.logger.info, **params)
+            sc.transform_eps_ps(
+                in_path, 
+                self.io_frame.out_dir_var.get(),
+                save_image=save_flag,
+                project_callback=self.preview_frame.show_image, 
+                logger=self.logger, 
+                **params)
+        else:
+            self.logger.error("Unsupported file format for resizing.")
+        return
+
         
-        self.preview_frame.clear_preview()
-        self.preview_frame.show_image(img)
 
     def on_files_var_changed(self, *args):
         files = self.io_frame.files_var.get().strip().split("\n")

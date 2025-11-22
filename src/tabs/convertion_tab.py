@@ -74,17 +74,6 @@ class ConvertionTab(BaseTab):
         )
         self.quality_labeled_entry.pack(side="left", padx=(4, 4))
 
-        
-
-        # DPI enable checkbox and setting
-        self.enable_dpi = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            bitmap_fmt_row,
-            text="Enable DPI",
-            variable=self.enable_dpi,
-            onvalue=True,
-            offvalue=False
-        ).pack(side="left", padx=(6, 2))
 
         self.dpi_var = tk.IntVar(value=300)
         self.dpi_labeled_entry = LabeledValidatedEntry(
@@ -93,7 +82,6 @@ class ConvertionTab(BaseTab):
             bounds=(100, 600),
             label_prefix="DPI",
             width=6,
-            enable_condition=lambda: self.enable_dpi.get() and self.out_fmt.get().lower() != ".svg",
         )
         self.dpi_labeled_entry.pack(side="left", padx=(4, 4))
 

@@ -6,8 +6,7 @@ import time
 import os
 from PIL import Image
 from src.utils.analyzer import vector_analyzer
-from src.utils.commons import get_pdf_size_pt, get_ps_size_pt
-from PyPDF2 import PdfReader
+from src.utils.commons import get_script_size
 # 缓存元数据，避免重复I/O
 
 
@@ -126,10 +125,7 @@ class FileDetailsFrame(BaseFrame):
         # PDF/EPS/PS：显示物理尺寸（cm）
         elif typ in ('PDF','EPS','PS'):
             try:
-                if typ == 'PDF':
-                    width_pt, height_pt = get_pdf_size_pt(path)
-                else:
-                    width_pt, height_pt = get_ps_size_pt(path)
+                width_pt, height_pt = get_script_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72

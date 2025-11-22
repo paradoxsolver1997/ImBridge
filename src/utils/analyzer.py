@@ -5,8 +5,7 @@ from typing import Optional, Dict, Any, Callable
 import tempfile
 from xml.etree import ElementTree as ET
 
-from src.utils.converter import ps_eps_to_svg
-from src.utils.commons import remove_temp
+import src.utils.converter as cv
 
 
 def vector_analyzer(
@@ -21,13 +20,9 @@ def vector_analyzer(
     if ext == ".pdf":
         result = pdf_analyzer(in_path)
     elif ext == ".eps":
-        with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as tmp_svg:
-            svg_path = tmp_svg.name
-        try:
-            ps_eps_to_svg(in_path, svg_path)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            svg_path = cv.script2svg(in_path, tmp_dir)
             result = svg_analyzer(svg_path)
-        finally:
-            remove_temp(svg_path)
     elif ext == ".svg":
         result = svg_analyzer(in_path)
     else:

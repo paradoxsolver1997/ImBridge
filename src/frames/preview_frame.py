@@ -5,8 +5,9 @@ from PIL import Image, ImageTk
 import os
 import tempfile
 
-from src.utils import converter
-from src.utils.commons import remove_temp, get_pdf_size_pt, get_ps_size_pt
+import src.utils.converter as cv
+from src.utils.commons import get_script_size
+from src.utils.commons import script_formats, bitmap_formats
 
 
 class PreviewFrame(BaseFrame):
@@ -122,32 +123,33 @@ class PreviewFrame(BaseFrame):
         try:
             ext = os.path.splitext(img_path)[1].lower()
             # Support vector preview: svg/pdf/eps/ps
-            
-            if ext in (".svg", ".pdf", ".eps", ".ps"):
-                # self.log("Vector file detected, converting to bitmap for preview...")
-                with tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                ) as tmp_png:
-                    png_path = tmp_png.name
-                try:
-                    converter.vector_to_bitmap(img_path, png_path, dpi=self.dpi)
-                    img = Image.open(png_path)
-                    if ext in (".eps", ".ps"):
-                        sz = get_ps_size_pt(img_path)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                if ext in script_formats:
+                    try:
+                        tmp_png = cv.script2raster(img_path, tmp_dir, out_fmt=".png", dpi=self.dpi)
+                        img = Image.open(tmp_png)
+                        sz = get_script_size(img_path)
                         self.show_image(img, pt_size=sz)
-                    elif ext == ".pdf":
-                        sz = get_pdf_size_pt(img_path)
-                        self.show_image(img, pt_size=sz)
-                    else:
+                    except Exception as ve:
+                        raise ve
+                elif ext == ".svg":
+                    try:
+                        tmp_png = cv.svg2raster(img_path, tmp_dir, out_fmt=".png")
+                        img = Image.open(tmp_png)
                         self.show_image(img)
-                except Exception as ve:
-                    raise ve
-                finally:
-                    remove_temp(png_path)
-            else:
-                img = Image.open(img_path)
-                self.show_image(img)
-            self._update_page_label()
+                    except Exception as ve:
+                        raise ve
+                elif ext in bitmap_formats:
+                    img = Image.open(img_path)
+                    self.show_image(img)
+                else:
+                    # 不支持的格式
+                    if hasattr(self, "preview_label"):
+                        self.preview_label.config(image="", text="No Preview Available")
+                        self.preview_label.image = None
+                    if hasattr(self, "size_label"):
+                        self.size_label.config(text="")
+                self._update_page_label()
         except Exception as e:
             # 只清空图片和尺寸信息，不销毁按钮和页码
             if hasattr(self, "preview_label"):
