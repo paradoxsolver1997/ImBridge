@@ -14,6 +14,88 @@ bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
 script_formats = [".ps", ".eps", ".pdf"]
 
+
+def confirm_cropbox(cropbox, canvas_size) -> bool:
+    """
+    Confirm that the cropbox is within the canvas size.
+    cropbox: (left, top, right, bottom)
+    canvas_size: (width, height)
+    Returns True if valid, False otherwise.
+    """
+    left, top, right, bottom = cropbox
+    width, height = canvas_size
+    if left < 0 or top < 0 or right > width or bottom > height:
+        root = tk._default_root or tk.Tk()
+        root.withdraw()
+        msg = (
+            f"The specified crop box {cropbox} is out of bounds for the canvas size {canvas_size}.\n"
+            "Please adjust the crop box to fit within the image dimensions."
+        )
+        messagebox.showwarning("Invalid Crop Box", msg)
+        if not tk._default_root:
+            root.destroy()
+        return False
+    return True
+
+
+def confirm_single_page(in_path) -> bool:
+    """
+    Check if the input file is single-page. If PDF/PS and multi-page, prompt user for confirmation.
+    Returns True if single-page or user chooses to continue, False otherwise.
+    """
+    import os
+    import tkinter as tk
+    from tkinter import messagebox
+    ext = os.path.splitext(in_path)[1].lower()
+    # Only PDF and PS can be multi-page
+    if ext == ".pdf":
+        try:
+            import fitz
+            doc = fitz.open(in_path)
+            n_pages = doc.page_count
+            doc.close()
+        except Exception:
+            n_pages = 1  # Fallback: treat as single page if cannot open
+        if n_pages > 1:
+            root = tk._default_root or tk.Tk()
+            root.withdraw()
+            msg = (
+                f"The PDF file contains {n_pages} pages. Only single-page files are supported.\n"
+                "If you continue, only the last page will be saved and previous pages will be overwritten.\n"
+                "It is recommended to split the file into single pages before proceeding.\n\nContinue anyway?"
+            )
+            resp = messagebox.askyesno("Multi-page PDF Detected", msg)
+            if not tk._default_root:
+                root.destroy()
+            return resp
+        else:
+            return True
+    elif ext == ".ps":
+        # Heuristic: count 'showpage' operators
+        try:
+            with open(in_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            n_pages = content.count("showpage")
+        except Exception:
+            n_pages = 1
+        if n_pages > 1:
+            root = tk._default_root or tk.Tk()
+            root.withdraw()
+            msg = (
+                f"The PS file contains {n_pages} pages (detected by 'showpage'). Only single-page files are supported.\n"
+                "If you continue, only the last page will be saved and previous pages will be overwritten.\n"
+                "It is recommended to split the file into single pages before proceeding.\n\nContinue anyway?"
+            )
+            resp = messagebox.askyesno("Multi-page PS Detected", msg)
+            if not tk._default_root:
+                root.destroy()
+            return resp
+        else:
+            return True
+    else:
+        # Other formats are always treated as single-page
+        return True
+
 def confirm_dir_existence(out_dir: str) -> bool:
     """
     检查out_dir是否存在，不存在则弹窗询问用户是否创建。
@@ -123,26 +205,6 @@ def check_tool(tool_key: str) -> bool:
         return importlib.util.find_spec(tool_key) is not None
     except Exception:
         return False
-
-
-def remove_temp(temp_path: str) -> None:
-    """Remove image file from disk."""
-    try:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-    except Exception as e:
-        raise e
-
-
-def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
-    """Remove alpha channel from an image by compositing onto a background color."""
-    if img.mode == "RGBA":
-        background = Image.new("RGB", img.size, bg_color)
-        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
-        return background
-    elif img.mode != "RGB" and img.mode != "L":
-        return img.convert("RGB")
-    return img
 
 
 def get_pdf_size_pt(pdf_path):
