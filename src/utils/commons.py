@@ -1,7 +1,8 @@
-
+# 新增：确认输出目录存在，否则询问用户是否创建
+import os
+import tkinter as tk
 from tkinter import messagebox
 from PIL import Image
-import os
 import subprocess
 import shutil
 import json
@@ -11,6 +12,39 @@ import fitz
 
 bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
+script_formats = [".ps", ".eps", ".pdf"]
+
+def confirm_dir_existence(out_dir: str) -> bool:
+    """
+    检查out_dir是否存在，不存在则弹窗询问用户是否创建。
+    若用户同意则递归创建，创建失败则警告并返回False。
+    若用户拒绝则返回False。
+    """
+    if os.path.exists(out_dir):
+        return True
+    # 弹窗询问
+    root = None
+    try:
+        root = tk._default_root or tk.Tk()
+        root.withdraw()
+        resp = messagebox.askyesno("Create Directory", f"Output directory does not exist:\n{out_dir}\nCreate it?")
+        if resp:
+            try:
+                os.makedirs(out_dir, exist_ok=True)
+                if os.path.exists(out_dir):
+                    return True
+                else:
+                    messagebox.showwarning("Create Directory Failed", f"Failed to create directory:\n{out_dir}\nPlease choose another output directory.")
+                    return False
+            except Exception as e:
+                messagebox.showwarning("Create Directory Failed", f"Failed to create directory:\n{out_dir}\nError: {e}\nPlease choose another output directory.")
+                return False
+        else:
+            return False
+    finally:
+        # 只在本函数创建的root才销毁
+        if root and not tk._default_root:
+            root.destroy()
 
 def confirm_overwrite(out_path):
     if os.path.exists(out_path):
@@ -91,14 +125,13 @@ def check_tool(tool_key: str) -> bool:
         return False
 
 
-def remove_temp(temp_path: str, log_fun=None) -> None:
+def remove_temp(temp_path: str) -> None:
     """Remove image file from disk."""
     try:
         if os.path.exists(temp_path):
             os.remove(temp_path)
     except Exception as e:
-        if log_fun:
-            log_fun(f"[vector] Failed to remove temp file {temp_path}: {e}")
+        raise e
 
 
 def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
