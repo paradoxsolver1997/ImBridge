@@ -49,7 +49,7 @@ class BaseTab(BaseFrame):
 
             # 位图 -> 位图
             if in_ext in bitmap_formats and out_ext in bitmap_formats:
-                out_path, _ = cv.raster_convert(
+                out_path = cv.raster_convert(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
@@ -58,7 +58,7 @@ class BaseTab(BaseFrame):
                 )
             # 位图 -> 脚本(pdf/eps/ps)
             elif in_ext in bitmap_formats and out_ext in script_formats:
-                out_path, _ = cv.raster2script(
+                out_path = cv.raster2script(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
@@ -67,14 +67,14 @@ class BaseTab(BaseFrame):
                 )
             # 位图 -> svg
             elif in_ext in bitmap_formats and out_ext == ".svg":
-                out_path, _ = cv.raster2svg(
+                out_path = cv.raster2svg(
                     in_path=f,
                     out_dir=out_dir,
                     logger=self.logger,
                 )
             # 脚本(pdf/eps/ps) -> 位图
             elif in_ext in script_formats and out_ext in bitmap_formats:
-                out_path, _ = cv.script2raster(
+                out_path = cv.script2raster(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
@@ -83,7 +83,7 @@ class BaseTab(BaseFrame):
                 )
             # 脚本(pdf/eps/ps) -> 脚本(pdf/eps/ps)
             elif in_ext in script_formats and out_ext in script_formats:
-                out_path, _ = cv.script_convert(
+                out_path = cv.script_convert(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
@@ -91,14 +91,14 @@ class BaseTab(BaseFrame):
                 )
             # 脚本(pdf/eps/ps) -> svg
             elif in_ext in script_formats and out_ext == ".svg":
-                out_path, _ = cv.script2svg(
+                out_path = cv.script2svg(
                     in_path=f,
                     out_dir=out_dir,
                     logger=self.logger,
                 )
             # svg -> 位图
             elif in_ext == ".svg" and out_ext in bitmap_formats:
-                out_path, _ = cv.svg2raster(
+                out_path = cv.svg2raster(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
@@ -106,7 +106,7 @@ class BaseTab(BaseFrame):
                 )
             # svg -> 脚本(pdf/eps/ps)
             elif in_ext == ".svg" and out_ext in script_formats:
-                out_path, _ = cv.svg2script(
+                out_path = cv.svg2script(
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,

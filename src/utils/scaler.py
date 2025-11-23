@@ -1,4 +1,3 @@
-from turtle import width
 from typing import Optional, Tuple, Callable
 from PIL import Image, ImageEnhance, ImageFilter
 import os
@@ -119,7 +118,7 @@ def transform_svg(
     **kwargs
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
     
-    def mat2str(mat: tuple[float, float, float, float, float, float]) -> str:
+    def mat2str(mat: list[float, float, float, float, float, float]) -> str:
         return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
 
     base_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -186,8 +185,6 @@ def transform_svg(
         )
         logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
 
-    transform = []
-    transform.append(mat2str(mat))
     try:
         g = ET.Element("g")
         for child in list(root):
@@ -247,7 +244,7 @@ def transform_pdf(
         # 用PyMuPDF整体缩放纯矢量PDF内容
         with tempfile.TemporaryDirectory() as tmp_dir:
             # 1. 先用 wash_eps_ps 清洗，输出到 out_path
-            tmp_out, _ = cv.script_convert(in_path, tmp_dir)
+            tmp_out = cv.script_convert(in_path, tmp_dir)
             try:
                 with fitz.open(tmp_out) as doc:
                     with fitz.open() as new_doc:
@@ -283,6 +280,13 @@ def transform_pdf(
                                 keep_proportion=False,  # 不保持比例(使用我们的缩放)
                                 overlay=True
                             )
+                            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+                                angle = kwargs.get('rotate_angle')
+                                logger.info(f"[vector] Rotating PDF page by {angle} degrees") if logger else None
+                                new_page.set_rotation(angle)
+
+                            if 'flip_lr' in kwargs or 'flip_tb' in kwargs:
+                                logger.error(f"[vector] Flipping PDF page is not supported.") if logger else None
 
                             # page.set_mediabox(fitz.Rect(0, 0, target_width, target_height))
                             # 支持单独设置cropbox
@@ -299,33 +303,12 @@ def transform_pdf(
                                     logger.info(f"[vector] Set cropbox to ({x},{y},{w},{h})") if logger else None
                                 else:
                                     page.set_cropbox(fitz.Rect(0, 0, target_width, target_height))
-                                logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None
-                            
-                            '''
-                            if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-                                flip = kwargs.get('flip')
-                                if flip == 'LR':
-                                    matrix = fitz.Matrix(-1, 1).pretranslate(-target_width, 0)
-                                else:  # 'TB'
-                                    matrix = fitz.Matrix(1, -1).pretranslate(0, -target_height)
-                                new_page.set_transform(matrix)
-                                logger.info(f"[vector] Flipped PDF page {flip}") if logger else None
-                            '''
-                            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                                angle = kwargs.get('rotate_angle')
-                                logger.info(f"[vector] Rotating PDF page by {angle} degrees") if logger else None
-                                new_page.set_rotation(angle)
-                        
+                                logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None                            
+
                         tmp_path = os.path.join(tmp_dir, "temp.pdf")
                         new_doc.save(tmp_path)
-                        doc.close()
-                        new_doc.close()
-
                 project_callback(cv.show_script(tmp_path, dpi=dpi)) if project_callback else None
-                if save_image:  
-                    shutil.move(tmp_path, out_path) 
-                else:
-                    out_path = None
+                out_path = shutil.move(tmp_path, out_path) if save_image else None
                 msg = f"[vector] PDF saved to {out_path}" if save_image else "[vector] PDF resized without saving"
                 logger.info(msg) if logger else None
                 return out_path
@@ -360,15 +343,15 @@ def transform_eps_ps(
         dpi = kwargs.get("dpi", None)
         with tempfile.TemporaryDirectory() as tmp_dir:
             # 1. 先用 wash_eps_ps 清洗，输出到 out_path
-            tmp_out, _ = cv.script_convert(in_path, tmp_dir)
-
+            # tmp_out = cv.script_convert(in_path, tmp_dir)
+            tmp_out = os.path.join(tmp_dir, "washed.eps")
             # 2. 如果有 crop_box，修改 BoundingBox
             if 'crop_box' in kwargs and kwargs['crop_box'] is not None:
                 crop_box = kwargs.get("crop_box", None)
                 if confirm_cropbox(crop_box, get_script_size(in_path)):
                     x0, y0, x1, y1 = crop_box
                     # 二进制模式读取 EPS
-                    with open(tmp_out, "rb") as f:
+                    with open(in_path, "rb") as f:
                         content = f.read()
                     # bytes 正则，允许行首空格
                     pattern_bbox = re.compile(br"^\s*(%%BoundingBox: )(-?\d+) (-?\d+) (-?\d+) (-?\d+)", re.MULTILINE)
@@ -384,7 +367,7 @@ def transform_eps_ps(
                     content, n_bbox = pattern_bbox.subn(repl_bbox, content)
                     content, n_hires = pattern_hires.subn(repl_hires, content)
                     # 写回文件
-                    with open(tmp_out, "wb") as f:
+                    with open(in_path, "wb") as f:
                         f.write(content)
                     if logger:
                         logger.info(f"Cropped BoundingBox to {x0} {y0} {x1} {y1} "
@@ -392,59 +375,257 @@ def transform_eps_ps(
             else:
                 shutil.copy(in_path, tmp_out)
             
-            # ======== 读取 EPS 内容，准备注入变换矩阵 ========
+            # ======== 读取 EPS 内容，准备替换变换矩阵 ========
             with open(tmp_out, "r", encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
             width, height = get_script_size(tmp_out)
 
-            # 寻找注入点：第一个绘图命令前
-            draw_cmds = ("moveto", "lineto", "curveto", "stroke", "fill", "show")
-            insert_idx = None
-            for i, line in enumerate(lines):
-                if any(cmd in line for cmd in draw_cmds):
-                    insert_idx = i
-                    break
-            if insert_idx is None:
-                insert_idx = len(lines) - 1
-
-            # ======== 构造变换矩阵字符串 ========
-            transform_cmds = []
-
-            if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-                flip = kwargs.get("flip", None)
-                if flip in ["LR", "TB"]:
-                    if flip == "LR":
-                        transform_cmds.append(f"-1 1 scale\n{width} neg 0 translate\n")
-                    else:
-                        transform_cmds.append(f"1 -1 scale\n0 {height} neg translate\n")
+            # 匹配六元组（a b c d e f cm 或 [a b c d e f]）
+            import re
+            mat_line_idx = None
+            orig_mat = None
+            mat_pattern_cm = re.compile(r"^\s*([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+cm\b")
+            mat_pattern_bracket = re.compile(r"\[\s*([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s*\]")
+            mat_pattern_cm = re.compile(r"^(?P<pre>\s*)(?P<a>[-+\d.eE]+)\s+(?P<b>[-+\d.eE]+)\s+(?P<c>[-+\d.eE]+)\s+(?P<d>[-+\d.eE]+)\s+(?P<e>[-+\d.eE]+)\s+(?P<f>[-+\d.eE]+)\s+cm(?P<post>.*)$")
+            mat_pattern_bracket = re.compile(r"^(?P<pre>.*?)(\[\s*)(?P<a>[-+\d.eE]+)\s+(?P<b>[-+\d.eE]+)\s+(?P<c>[-+\d.eE]+)\s+(?P<d>[-+\d.eE]+)\s+(?P<e>[-+\d.eE]+)\s+(?P<f>[-+\d.eE]+)\s*\](?P<post>.*)$")
             
-                if logger:
-                    logger.info("[vector] Applied transforms: "
-                                f"flip={flip}, "
-                                f"insert_idx={insert_idx}")
+            
+            pattern = re.compile(
+                r"""^
+                (?P<prefix>.*?)                                  # 前导内容
+                (?:
+                    (?P<vals1>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s+cm
+                    |
+                    \[\s*(?P<vals2>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s*\]
+                )
+                (?P<suffix>.*)$                                   # 后缀
+                """,
+                re.VERBOSE
+            )
+
+            
+            for i, line in enumerate(lines):
+
+                match = pattern.match(line)
+                if match:
+                    pre = match.group("prefix")
+                    post = match.group("suffix")
+
+                    # 可能是 cm 形式，也可能是 [ ] 形式
+                    vals = match.group("vals1") or match.group("vals2")
+                    a, b, c, d, e, f = map(float, vals.split())
+                    orig_mat = [a, b, c, d, e, f]
+                    mat_line_idx = i
+                    print("PREFIX:", pre)
+                    print("VALUES:", orig_mat)
+                    print("SUFFIX:", post)
+                    break
+                print("XXXXXX")
+
+        
+            if orig_mat is not None and mat_line_idx is not None:
+                mat = compute_trans_matrix(orig_mat)
+                logger.info(f"[vector] Original EPS/PS transform matrix: {orig_mat}") if logger else None
+            else:
+                logger.warning("[vector] No transform matrix found in EPS/PS.") if logger else None
+                return None
+
+            if 'flip_lr' in kwargs and kwargs['flip_lr']:
+                mat = compute_trans_matrix(mat, flip_lr=True, translate=[width, 0])
+                logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
+
+            if 'flip_tb' in kwargs and kwargs['flip_tb']: 
+                mat = compute_trans_matrix(mat, flip_tb=True, translate=[0, height])
+                logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
+            
             if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
                 angle = kwargs.get("rotate_angle", None)
-                if angle is not None:
+                # if angle is not None:
                     # 通用 rotate + translate
-                    transform_cmds.append(f"{angle} rotate\n0 {-height} translate\n")
+                    # transform_cmds.append(f"{angle} rotate\n0 {-height} translate\n")
 
-                if logger:
-                    logger.info("[vector] Applied transforms: "
-                                f"rotate={angle}, "
-                                f"insert_idx={insert_idx}")
+                logger.info(f"[vector] Applied transforms:  rotate={angle}") if logger else None
 
-            # 如果有变换，则插入 gsave/grestore
-            if transform_cmds:
-                lines.insert(insert_idx, "gsave\n" + "".join(transform_cmds))
 
-                # 在文件尾部加 grestore（如果没有）
-                if not any("grestore" in line for line in lines[-10:]):
-                    lines.append("\ngrestore\n")
+            if mat_pattern_cm.match(lines[mat_line_idx]):
+                # 替换为 a b c d e f cm
+                new_line = f"{pre}" + "{} {} {} {} {} {} cm".format(*mat) + f"{post}\n"
+                lines[mat_line_idx] = new_line
+            else:
+                # 替换为 [a b c d e f]
+                new_line = f"{pre}" + "[ {} {} {} {} {} {} ]".format(*mat) + f"{post}"
+                # 保留原行其他内容
+                lines[mat_line_idx] = mat_pattern_bracket.sub(new_line, lines[mat_line_idx])
+            print("NEW LINE")
+            print(new_line)
+            logger.info(f"[vector] EPS/PS transform matrix replaced: {mat}") if logger else None
 
-                with open(tmp_out, "w", encoding="utf-8") as f:
-                    f.writelines(lines)
+            with open(tmp_out, "w", encoding="utf-8") as f:
+                f.writelines(lines)
 
-                
+            project_callback(cv.show_script(tmp_out, dpi=dpi)) if project_callback else None
+            if save_image:
+                shutil.move(tmp_out, out_path)
+            else:
+                out_path = None
+
+        return out_path
+    
+
+def transform_eps_ps2(
+    in_path: str,
+    out_dir: str,
+    save_image: bool = True,
+    project_callback: Optional[Callable] = None,
+    logger: Optional[Logger] = None,
+    **kwargs
+) -> Optional[str]:
+    """
+    Resize or crop EPS/PS file by editing BoundingBox and HiResBoundingBox.
+    逻辑：
+      1. 用 wash_eps_ps 清洗文件（标准化 EPS/PS）
+      2. 如果指定 crop_box，直接修改 %%BoundingBox 和 %%HiResBoundingBox
+      3. 完全二进制安全，支持包含二进制数据的 EPS
+      只支持裁剪，不支持缩放
+    """
+
+    base_name = os.path.splitext(os.path.basename(in_path))[0]
+    in_fmt = os.path.splitext(in_path)[1].lower()
+    suffix = "resized"
+    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+    if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+        # 获取 crop_box
+        
+        dpi = kwargs.get("dpi", None)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # 1. 先用 wash_eps_ps 清洗，输出到 out_path
+            # tmp_out = cv.script_convert(in_path, tmp_dir)
+            tmp_out = os.path.join(tmp_dir, "washed.eps")
+            # 2. 如果有 crop_box，修改 BoundingBox
+            if 'crop_box' in kwargs and kwargs['crop_box'] is not None:
+                crop_box = kwargs.get("crop_box", None)
+                if confirm_cropbox(crop_box, get_script_size(in_path)):
+                    x0, y0, x1, y1 = crop_box
+                    # 二进制模式读取 EPS
+                    with open(in_path, "rb") as f:
+                        content = f.read()
+                    # bytes 正则，允许行首空格
+                    pattern_bbox = re.compile(br"^\s*(%%BoundingBox: )(-?\d+) (-?\d+) (-?\d+) (-?\d+)", re.MULTILINE)
+                    pattern_hires = re.compile(
+                        br"^\s*(%%HiResBoundingBox: )(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)",
+                        re.MULTILINE,
+                    )
+                    # 替换函数
+                    def repl_bbox(m):
+                        return b"%s%d %d %d %d" % (m.group(1), x0, y0, x1, y1)
+                    def repl_hires(m):
+                        return b"%s%.2f %.2f %.2f %.2f" % (m.group(1), float(x0), float(y0), float(x1), float(y1))
+                    content, n_bbox = pattern_bbox.subn(repl_bbox, content)
+                    content, n_hires = pattern_hires.subn(repl_hires, content)
+                    # 写回文件
+                    with open(in_path, "wb") as f:
+                        f.write(content)
+                    if logger:
+                        logger.info(f"Cropped BoundingBox to {x0} {y0} {x1} {y1} "
+                                    f"(bbox lines: {n_bbox}, hires lines: {n_hires})")
+            else:
+                shutil.copy(in_path, tmp_out)
+            
+            # ======== 读取 EPS 内容，准备替换变换矩阵 ========
+            with open(tmp_out, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+            width, height = get_script_size(tmp_out)
+
+            # 匹配六元组（a b c d e f cm 或 [a b c d e f]）
+            import re
+            mat_line_idx = None
+            orig_mat = None
+            mat_pattern_cm = re.compile(r"^\s*([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+cm\b")
+            mat_pattern_bracket = re.compile(r"\[\s*([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s*\]")
+            mat_pattern_cm = re.compile(r"^(?P<pre>\s*)(?P<a>[-+\d.eE]+)\s+(?P<b>[-+\d.eE]+)\s+(?P<c>[-+\d.eE]+)\s+(?P<d>[-+\d.eE]+)\s+(?P<e>[-+\d.eE]+)\s+(?P<f>[-+\d.eE]+)\s+cm(?P<post>.*)$")
+            mat_pattern_bracket = re.compile(r"^(?P<pre>.*?)(\[\s*)(?P<a>[-+\d.eE]+)\s+(?P<b>[-+\d.eE]+)\s+(?P<c>[-+\d.eE]+)\s+(?P<d>[-+\d.eE]+)\s+(?P<e>[-+\d.eE]+)\s+(?P<f>[-+\d.eE]+)\s*\](?P<post>.*)$")
+            
+            
+            pattern = re.compile(
+                r"""^
+                (?P<prefix>.*?)                                  # 前导内容
+                (?:
+                    (?P<vals1>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s+cm
+                    |
+                    \[\s*(?P<vals2>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s*\]
+                )
+                (?P<suffix>.*)$                                   # 后缀
+                """,
+                re.VERBOSE
+            )
+
+            match = pattern.match(line)
+            if match:
+                prefix = match.group("prefix")
+                suffix = match.group("suffix")
+
+                # 可能是 cm 形式，也可能是 [ ] 形式
+                vals = match.group("vals1") or match.group("vals2")
+                a, b, c, d, e, f = map(float, vals.split())
+
+                print("PREFIX:", prefix)
+                print("VALUES:", a, b, c, d, e, f)
+                print("SUFFIX:", suffix)
+            print("XXXXXX")
+            for i, line in enumerate(lines):
+                m = mat_pattern_cm.match(line)
+                if m:
+                    pre = m.group('pre')
+                    post = m.group('post')
+                    orig_mat = [float(m.group(j)) for j in range(1, 7)]
+                    mat_line_idx = i
+                    break
+                m2 = mat_pattern_bracket.search(line)
+                if m2:
+                    pre = m2.group('pre')
+                    post = m2.group('post')
+                    orig_mat = [float(m2.group(j)) for j in range(1, 7)]
+                    mat_line_idx = i
+                    break
+            if orig_mat is not None and mat_line_idx is not None:
+                mat = compute_trans_matrix(orig_mat)
+                logger.info(f"[vector] Original EPS/PS transform matrix: {orig_mat}") if logger else None
+            else:
+                logger.warning("[vector] No transform matrix found in EPS/PS.") if logger else None
+                return None
+
+            if 'flip_lr' in kwargs and kwargs['flip_lr']:
+                mat = compute_trans_matrix(mat, flip_lr=True, translate=[width, 0])
+                logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
+
+            if 'flip_tb' in kwargs and kwargs['flip_tb']: 
+                mat = compute_trans_matrix(mat, flip_tb=True, translate=[0, height])
+                logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
+            
+            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+                angle = kwargs.get("rotate_angle", None)
+                # if angle is not None:
+                    # 通用 rotate + translate
+                    # transform_cmds.append(f"{angle} rotate\n0 {-height} translate\n")
+
+                logger.info(f"[vector] Applied transforms:  rotate={angle}") if logger else None
+
+
+            if mat_pattern_cm.match(lines[mat_line_idx]):
+                # 替换为 a b c d e f cm
+                new_line = f"{pre}" + "{} {} {} {} {} {} cm".format(*mat) + f"{post}\n"
+                lines[mat_line_idx] = new_line
+            else:
+                # 替换为 [a b c d e f]
+                new_line = f"{pre}" + "[ {} {} {} {} {} {} ]".format(*mat) + f"{post}"
+                # 保留原行其他内容
+                lines[mat_line_idx] = mat_pattern_bracket.sub(new_line, lines[mat_line_idx])
+            print("NEW LINE")
+            print(new_line)
+            logger.info(f"[vector] EPS/PS transform matrix replaced: {mat}") if logger else None
+
+            with open(tmp_out, "w", encoding="utf-8") as f:
+                f.writelines(lines)
 
             project_callback(cv.show_script(tmp_out, dpi=dpi)) if project_callback else None
             if save_image:

@@ -239,13 +239,13 @@ def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
 
 
 def compute_trans_matrix(
-    base_mat: Optional[tuple[float, float, float, float, float, float]] = (1, 0, 0, 1, 0, 0),
+    base_mat: Optional[list[float, float, float, float, float, float]] = [1, 0, 0, 1, 0, 0],
     rotate_angle: Optional[float] = None,   # 度
     flip_lr: Optional[bool] = None,
     flip_tb: Optional[bool] = None,
     translate: Optional[list[float]] = None,
     scale: Optional[list[float]] = None  # [sx, sy]
-) -> tuple[float, float, float, float, float, float]:
+) -> list[float, float, float, float, float, float]:
     """
     返回 SVG matrix(a,b,c,d,e,f)
     变换顺序: rotate -> scale -> flip -> translate
@@ -294,4 +294,4 @@ def compute_trans_matrix(
     # 返回 SVG matrix(a,b,c,d,e,f)
     a, c, e = M[0]
     b, d, f = M[1]
-    return (a, b, c, d, e, f)
+    return [a, b, c, d, e, f]
