@@ -21,7 +21,7 @@ def vector_analyzer(
         result = pdf_analyzer(in_path)
     elif ext == ".eps":
         with tempfile.TemporaryDirectory() as tmp_dir:
-            svg_path = cv.script2svg(in_path, tmp_dir)
+            svg_path, _ = cv.script2svg(in_path, tmp_dir)
             result = svg_analyzer(svg_path)
     elif ext == ".svg":
         result = svg_analyzer(in_path)

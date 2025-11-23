@@ -2,20 +2,19 @@
 import os
 import tkinter as tk
 from tkinter import messagebox
-from PIL import Image
 import subprocess
 import shutil
 import json
 import importlib
-
-import fitz
+import numpy as np
+from typing import Optional
 
 bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
 script_formats = [".ps", ".eps", ".pdf"]
 
 
-def confirm_cropbox(cropbox, canvas_size) -> bool:
+def confirm_cropbox(cropbox: tuple[float, float, float, float], canvas_size: tuple[int, int]) -> bool:
     """
     Confirm that the cropbox is within the canvas size.
     cropbox: (left, top, right, bottom)
@@ -38,7 +37,7 @@ def confirm_cropbox(cropbox, canvas_size) -> bool:
     return True
 
 
-def confirm_single_page(in_path) -> bool:
+def confirm_single_page(in_path: str) -> bool:
     """
     Check if the input file is single-page. If PDF/PS and multi-page, prompt user for confirmation.
     Returns True if single-page or user chooses to continue, False otherwise.
@@ -128,7 +127,7 @@ def confirm_dir_existence(out_dir: str) -> bool:
         if root and not tk._default_root:
             root.destroy()
 
-def confirm_overwrite(out_path):
+def confirm_overwrite(out_path: str) -> bool:
     if os.path.exists(out_path):
         return messagebox.askyesno(
             "File Exists", f"File already exists:\n{out_path}\nOverwrite?"
@@ -207,7 +206,7 @@ def check_tool(tool_key: str) -> bool:
         return False
 
 
-def get_script_size(in_path):
+def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     """
     获取脚本类矢量文件（pdf/ps/eps）的页面尺寸，单位pt。
     支持PDF（用fitz）和PS/EPS（用BoundingBox）。
@@ -237,3 +236,62 @@ def get_script_size(in_path):
         return width_pt, height_pt
     else:
         return None, None
+
+
+def compute_trans_matrix(
+    base_mat: Optional[tuple[float, float, float, float, float, float]] = (1, 0, 0, 1, 0, 0),
+    rotate_angle: Optional[float] = None,   # 度
+    flip_lr: Optional[bool] = None,
+    flip_tb: Optional[bool] = None,
+    translate: Optional[list[float]] = None,
+    scale: Optional[list[float]] = None  # [sx, sy]
+) -> tuple[float, float, float, float, float, float]:
+    """
+    返回 SVG matrix(a,b,c,d,e,f)
+    变换顺序: rotate -> scale -> flip -> translate
+    """
+    # 旋转矩阵
+    B = np.array([[base_mat[0], base_mat[2], base_mat[4]],
+                [base_mat[1], base_mat[3], base_mat[5]],
+                [0, 0, 1]])
+
+    if rotate_angle is not None:
+        theta = np.radians(rotate_angle)
+        R = np.array([[np.cos(theta), np.sin(theta), 0],
+                    [-np.sin(theta), np.cos(theta), 0],
+                    [0, 0, 1]])
+    else:
+        R = np.eye(3)
+
+    # 缩放矩阵
+    S = np.array([[scale[0], 0, 0],
+                  [0, scale[1], 0],
+                  [0, 0, 1]]) if scale is not None else np.eye(3)
+    
+    # 翻转矩阵
+    if flip_lr:
+        F_LR = np.array([[-1, 0, 0],
+                    [0, 1, 0],
+                    [0, 0, 1]])
+    else:
+        F_LR = np.eye(3)
+    
+    if flip_tb:
+        F_TB = np.array([[1, 0, 0],
+                    [0, -1, 0],
+                    [0, 0, 1]])
+    else:
+        F_TB = np.eye(3)
+
+    # 平移矩阵
+    T = np.array([[1, 0, translate[0]],
+                  [0, 1, translate[1]],
+                  [0, 0, 1]]) if translate is not None else np.eye(3)
+    
+    # 依次相乘
+    M = T @ R @ F_TB @ F_LR @ S @ B
+    
+    # 返回 SVG matrix(a,b,c,d,e,f)
+    a, c, e = M[0]
+    b, d, f = M[1]
+    return (a, b, c, d, e, f)

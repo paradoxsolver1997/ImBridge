@@ -342,12 +342,20 @@ class ResizeTab(BaseTab):
 
         if self.flip_horizontal_var.get():
             params.update({
-                "flip": 'LR',
+                "flip_lr": True,
+            })
+        else:
+            params.update({
+                "flip_lr": False,
             })
 
         if self.flip_vertical_var.get():
             params.update({
-                "flip": 'TB',
+                "flip_tb": True,
+            })
+        else:
+            params.update({
+                "flip_tb": False,
             })
 
         # 根据文件类型选择不同的resize方法

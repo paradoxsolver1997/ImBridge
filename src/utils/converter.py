@@ -20,17 +20,20 @@ Uses Pillow for most bitmap format conversions and pillow-heif for HEIC/HEIF dec
 device_map = {
     ".pdf": "pdfwrite",
     ".eps": "eps2write",
-    ".ps": "ps2write"
+    ".ps": "ps2write",
+    ".png": "pngalpha",
+    ".jpg": "jpeg",
+    ".jpeg": "jpeg",
+    ".tiff": "tiff24nc",
 }
 
 def raster_convert(
     in_path: str,
     out_dir: str,
     out_fmt: str = None,
-    show_image: bool = False,
     logger: Optional[Logger] = None,
     **kwargs,
-) -> Optional[Tuple[str, Optional[Image.Image]]]:
+) -> Optional[str]:
     """Convert between raster images using Pillow."""
     try:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -45,11 +48,7 @@ def raster_convert(
                 img = img.convert("RGB")
             img.save(out_path, quality=kwargs.get("quality", 95))
             logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-            
-            if show_image:
-                return out_path, img
-            else:
-                return out_path, None
+            return out_path
     except Exception as e:
         logger.error(f'Format Conversion of {os.path.basename(in_path)} failed due to "{e}".') if logger else None
 
@@ -59,9 +58,8 @@ def raster2script(
     out_dir: str,
     out_fmt: str,
     dpi: int,
-    show_image: bool = False,
     logger: Optional[Logger] = None,
-) -> Optional[Tuple[str, Optional[Image.Image]]]:
+) -> Optional[str]:
     """
     Embed bitmap into vector graphics (svg/pdf/eps) as <image> tag or embedded image.
     """
@@ -78,7 +76,7 @@ def raster2script(
                 img = remove_alpha_channel(img)
                 img.save(out_path, format="EPS", dpi=(dpi, dpi))
                 logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-                return out_path, img
+                return out_path
             elif out_fmt in (".pdf", ".ps"):
                 w, h = img.size
                 # Calculate physical size (inches) based on pixel dimensions and dpi
@@ -90,10 +88,7 @@ def raster2script(
                 c.showPage()
                 c.save()
                 logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-                if show_image:
-                    return out_path, img
-                else:
-                    return out_path, None
+                return out_path
             else:
                 raise RuntimeError(f"Unsupported vector format: {out_fmt}")
     except Exception as e:
@@ -105,9 +100,8 @@ def script2raster(
     out_dir: str,
     out_fmt: str,
     dpi: int,
-    show_image: bool = False,
     logger: Optional[Logger] = None,
-) -> Optional[Tuple[str, Optional[Image.Image]]]:
+) -> Optional[str]:
     """
     Convert vector graphics (ps/eps/pdf/svg) to high-definition bitmap (e.g. png/jpg/tiff) using Ghostscript or cairosvg.
     """
@@ -124,12 +118,6 @@ def script2raster(
                     raise RuntimeError(
                         "Ghostscript executable not found; provide path in config or ensure it is on PATH"
                     )
-                device_map = {
-                    ".png": "pngalpha",
-                    ".jpg": "jpeg",
-                    ".jpeg": "jpeg",
-                    ".tiff": "tiff24nc",
-                }
                 device = device_map.get(out_fmt, ".pngalpha")
                 # ps/eps 用 -dEPSCrop，pdf 用 -dUseCropBox
                 crop_flag = "-dEPSCrop" if in_fmt in (".ps", ".eps") else "-dUseCropBox"
@@ -148,11 +136,7 @@ def script2raster(
                 logger.info(
                     f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded."
                 ) if logger else None
-                img = Image.open(out_path)
-                if show_image:
-                    return out_path, img
-                else:
-                    return out_path, None
+                return out_path
             else:
                 raise RuntimeError(f"Unsupported input format: {in_fmt}")
     except Exception as e:
@@ -160,7 +144,7 @@ def script2raster(
         logger.error(msg) if logger else None
 
 
-def raster2svg(in_path: str, out_dir: str, show_image: bool = False, logger: Optional[Logger] = None) -> Optional[Tuple[str, Optional[Image.Image]]]:
+def raster2svg(in_path: str, out_dir: str, logger: Optional[Logger] = None) -> Optional[str]:
     with open(in_path, "rb") as f:
         b64 = base64.b64encode(f.read()).decode("ascii")
     mime = "image/png" if in_path.lower().endswith(".png") else "image/jpeg"
@@ -179,14 +163,10 @@ def raster2svg(in_path: str, out_dir: str, show_image: bool = False, logger: Opt
                     """
         )
     logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-    if show_image:
-        img = show_svg(out_path)
-        return out_path, img
-    else:
-        return out_path, None
+    return out_path
 
 
-def svg2raster(in_path: str, out_dir: str, out_fmt: str, show_image: bool = False, logger: Optional[Logger] = None, **kwargs) -> Optional[Tuple[str, Optional[Image.Image]]]:
+def svg2raster(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None, **kwargs) -> Optional[str]:
     try:
         import cairosvg
     except Exception as e:
@@ -215,11 +195,10 @@ def svg2raster(in_path: str, out_dir: str, out_fmt: str, show_image: bool = Fals
         else:
             raise RuntimeError(f"Unsupported bitmap format: {out_fmt}")
         logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-        img = Image.open(out_path) if show_image else None
-    return out_path, img
+    return out_path
 
 
-def script2svg(in_path: str, out_dir: str, show_image: bool = False, logger: Optional[Logger] = None) -> Optional[Tuple[str, Optional[Image.Image]]]:
+def script2svg(in_path: str, out_dir: str, logger: Optional[Logger] = None) -> Optional[str]:
     """
     支持ps/eps/pdf转svg，pdf需先转ps。
     in_path: 输入文件（.ps/.eps/.pdf）
@@ -244,17 +223,13 @@ def script2svg(in_path: str, out_dir: str, show_image: bool = False, logger: Opt
             subprocess.run([pstoedit, "-f", "svg", in_path, out_path], check=True)
         logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
         
-        if show_image:
-            img = show_svg(out_path)
-            return out_path, img
-        else:
-            return out_path, None
+        return out_path
     except Exception as e:
         logger.error(f"Format Conversion failed: {e}") if logger else None
         raise
 
 
-def svg2script(in_path: str, out_dir: str, out_fmt: str, dpi: int, show_image: bool = False, logger: Optional[Logger] = None) -> Optional[Tuple[str, Optional[Image.Image]]]:
+def svg2script(in_path: str, out_dir: str, out_fmt: str, dpi: int, logger: Optional[Logger] = None) -> Optional[str]:
     """
     将SVG转为PDF/EPS/PS，并用Ghostscript清洗，最后删除缓存文件。
     in_path: SVG文件路径
@@ -278,14 +253,19 @@ def svg2script(in_path: str, out_dir: str, out_fmt: str, dpi: int, show_image: b
             elif out_fmt in (".eps", ".ps"):
                 cairosvg.svg2ps(url=in_path, write_to=tmp_path, dpi=dpi)
             # Ghostscript清洗
-            out_path = script_convert(tmp_path, out_dir, out_fmt)
+            # out_path, _ = script_convert(tmp_path, out_dir, out_fmt)
+            base_name = os.path.splitext(os.path.basename(in_path))[0]
+            in_fmt = os.path.splitext(in_path)[1].lower()
+            out_fmt = out_fmt if out_fmt is not None else in_fmt
+            suffix = in_fmt.lstrip(".") + "2" + out_fmt.lstrip(".")
+            out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
+            shutil.copy(tmp_path, out_path)
         msg = f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded."
         logger.info(msg) if logger else None
-        img = show_script(in_path, dpi=dpi) if show_image else None
-        return out_path, img
+        return out_path
 
 
-def script_convert(in_path: str, out_dir: str, out_fmt: str = None, show_image: bool = False, logger: Optional[Logger] = None) -> Optional[Tuple[str, Optional[Image.Image]]]:
+def script_convert(in_path: str, out_dir: str, out_fmt: str = None, logger: Optional[Logger] = None) -> Optional[str]:
     
     if not check_tool("ghostscript"):
         raise RuntimeError("Ghostscript not found in PATH; required for conversion")
@@ -310,23 +290,21 @@ def script_convert(in_path: str, out_dir: str, out_fmt: str = None, show_image: 
         ]
         subprocess.run(cmd, check=True)
         logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-        if show_image:
-            img = show_script(in_path)
-            return out_path, img
-        else:
-            return out_path, None
+        return out_path
         
 
 def show_script(in_path: str, dpi: int = 96) -> Image.Image:
     with tempfile.TemporaryDirectory() as tmp_dir:
-        _, img = script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi, show_image=True)
+        out_path = script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
+        img = Image.open(out_path)
         img.load()  # 强制读取到内存
     return img
 
 
 def show_svg(in_path: str) -> Image.Image:
     with tempfile.TemporaryDirectory() as tmp_dir:
-        _, img = svg2raster(in_path, tmp_dir, out_fmt=".png", show_image=True)
+        out_path = svg2raster(in_path, tmp_dir, out_fmt=".png")
+        img = Image.open(out_path)
         img.load()  # 强制读取到内存
     return img
 

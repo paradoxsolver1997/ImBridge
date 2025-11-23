@@ -1,6 +1,5 @@
 import tkinter as tk
 import os
-import logging
 
 import src.utils.converter as cv
 from src.frames.base_frame import BaseFrame
@@ -16,7 +15,7 @@ class BaseTab(BaseFrame):
     def __init__(self, parent, title=None, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
-        self.logger.infoger = getattr(self.winfo_toplevel(), "logger", None)
+        self.logger = getattr(self.winfo_toplevel(), "logger", None)
         self.preview_frame = getattr(self.winfo_toplevel(), "preview_frame", None)
 
         self.output_dir = getattr(self.winfo_toplevel(), "output_dir", None)
@@ -38,9 +37,9 @@ class BaseTab(BaseFrame):
         Supports analysis-type handler (no output file), in which case process_func returns None.
         """
         # Treat [''] (from empty entry) as no input files
-        self.logger.info(f"[New Convertion Task]: {len(file_list)} files", logging.INFO)
+        self.logger.info(f"[New Convertion Task]: {len(file_list)} files")
         if not file_list or (len(file_list) == 1 and file_list[0].strip() == ""):
-            self.logger.infoger.error("No input files selected")
+            self.logger.error("No input files selected")
             return
         self.preview_frame.clear_file_queue()
         out_ext = out_ext.lower()
@@ -55,7 +54,7 @@ class BaseTab(BaseFrame):
                     out_dir=out_dir,
                     out_fmt=out_ext,
                     quality=kwargs.get('quality', 95),
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # 位图 -> 脚本(pdf/eps/ps)
             elif in_ext in bitmap_formats and out_ext in script_formats:
@@ -64,14 +63,14 @@ class BaseTab(BaseFrame):
                     out_dir=out_dir,
                     out_fmt=out_ext,
                     dpi=kwargs.get('dpi', 300),
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # 位图 -> svg
             elif in_ext in bitmap_formats and out_ext == ".svg":
                 out_path, _ = cv.raster2svg(
                     in_path=f,
                     out_dir=out_dir,
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # 脚本(pdf/eps/ps) -> 位图
             elif in_ext in script_formats and out_ext in bitmap_formats:
@@ -80,7 +79,7 @@ class BaseTab(BaseFrame):
                     out_dir=out_dir,
                     out_fmt=out_ext,
                     dpi=kwargs.get('dpi', 300),
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # 脚本(pdf/eps/ps) -> 脚本(pdf/eps/ps)
             elif in_ext in script_formats and out_ext in script_formats:
@@ -88,14 +87,14 @@ class BaseTab(BaseFrame):
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # 脚本(pdf/eps/ps) -> svg
             elif in_ext in script_formats and out_ext == ".svg":
                 out_path, _ = cv.script2svg(
                     in_path=f,
                     out_dir=out_dir,
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # svg -> 位图
             elif in_ext == ".svg" and out_ext in bitmap_formats:
@@ -103,7 +102,7 @@ class BaseTab(BaseFrame):
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # svg -> 脚本(pdf/eps/ps)
             elif in_ext == ".svg" and out_ext in script_formats:
@@ -112,7 +111,7 @@ class BaseTab(BaseFrame):
                     out_dir=out_dir,
                     out_fmt=out_ext,
                     dpi=kwargs.get('dpi', 300),
-                    logger=self.logger.infoger,
+                    logger=self.logger,
                 )
             # svg -> svg
             elif in_ext == ".svg" and out_ext == ".svg":
@@ -122,8 +121,8 @@ class BaseTab(BaseFrame):
                 shutil.copy2(f, out_path)
                 self.logger.info(f"Copied {f} to {out_path}")
             else:
-                self.logger.info(f"Unsupported conversion: {in_ext} -> {out_ext}", logging.ERROR)
+                self.logger.info(f"Unsupported conversion: {in_ext} -> {out_ext}")
                 continue
             if out_path and os.path.exists(out_path):
                 self.preview_frame.add_file_to_queue(out_path)
-        self.logger.info("[Task Completed]", logging.INFO)
+        self.logger.info("[Task Completed]")

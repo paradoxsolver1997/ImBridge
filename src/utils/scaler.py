@@ -1,3 +1,4 @@
+from turtle import width
 from typing import Optional, Tuple, Callable
 from PIL import Image, ImageEnhance, ImageFilter
 import os
@@ -16,6 +17,7 @@ from src.utils.commons import confirm_dir_existence
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_cropbox
 from src.utils.commons import get_script_size
+from src.utils.commons import compute_trans_matrix
 
 
 def transform_image(
@@ -117,6 +119,9 @@ def transform_svg(
     **kwargs
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
     
+    def mat2str(mat: tuple[float, float, float, float, float, float]) -> str:
+        return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
+
     base_name = os.path.splitext(os.path.basename(in_path))[0]
     in_fmt = os.path.splitext(in_path)[1].lower()
     suffix = "resized"
@@ -125,15 +130,78 @@ def transform_svg(
     try:
         tree = ET.parse(in_path)
         root = tree.getroot()
-        width = int(float(root.get("width")))
-        height = int(float(root.get("height")))
+        orig_width = int(float(root.get("width")))
+        orig_height = int(float(root.get("height")))
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
     
+    mat = compute_trans_matrix()
+
+    if 'new_width' in kwargs and 'new_height' in kwargs:
+        target_width = float(kwargs['new_width'])
+        target_height = float(kwargs['new_height'])
+        scale_x = target_width / orig_width
+        scale_y = target_height / orig_height
+    elif 'scale_x' in kwargs and 'scale_y' in kwargs:
+        scale_x = float(kwargs['scale_x'])
+        scale_y = float(kwargs['scale_y'])
+        target_width = orig_width * scale_x
+        target_height = orig_height * scale_y
+    else:
+        scale_x = 1.0
+        scale_y = 1.0
+        target_width = orig_width
+        target_height = orig_height
+    
+    mat = compute_trans_matrix(mat, scale=(scale_x, scale_y))
+    root.set("viewBox", f"0 0 {target_width} {target_height}")
+    root.set("width", str(target_width))
+    root.set("height", str(target_height))
+
+    if 'flip_lr' in kwargs and kwargs['flip_lr']:
+        mat = compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
+    if 'flip_tb' in kwargs and kwargs['flip_tb']:
+        mat = compute_trans_matrix(mat, flip_tb=True, translate=[0, target_height])
+
+    if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+        angle = kwargs['rotate_angle'] % 360
+        # 如果旋转90或270度，需要交换width和height
+        if angle in [90, 270]:
+            temp_value = target_width
+            target_width = target_height
+            target_height = temp_value
+            root.set("viewBox", f"0 0 {target_width} {target_height}")
+            root.set("width", str(target_width))
+            root.set("height", str(target_height))
+        angle_map = {
+            0: [0, 0],
+            90: [0, target_height],
+            180: [target_width, target_height],
+            270: [target_width, 0],
+        }
+        mat = compute_trans_matrix(
+            mat, 
+            rotate_angle=angle, 
+            translate=angle_map.get(angle, [0, 0])
+        )
+        logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
+
+    transform = []
+    transform.append(mat2str(mat))
+    try:
+        g = ET.Element("g")
+        for child in list(root):
+            g.append(child)
+            root.remove(child)
+        g.set("transform", " ".join([mat2str(mat)]))
+        root.append(g)
+    except Exception as e:
+        raise RuntimeError(f"SVG transform failed: {e}")
+
     try:
         if 'crop_box' in kwargs and kwargs['crop_box'] is not None:
             crop_box = kwargs.get('crop_box')
-            if confirm_cropbox(crop_box, (width, height)):
+            if confirm_cropbox(crop_box, (target_width, target_height)):
                 # crop_box: (left, top, right, bottom)
                 x = crop_box[0]
                 y = crop_box[1]
@@ -144,42 +212,15 @@ def transform_svg(
                 root.set("width", str(w))
                 root.set("height", str(h))
         else:
-            root.set("width", str(w))
-            root.set("height", str(h))
-
-        if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-            flip = kwargs.get('flip')
-            if flip == 'LR':
-                transform_str = f"translate({width} 0) scale(-1 1)"
-            else:  # 'TB'
-                transform_str = f"translate(0 {height}) scale(1 -1)"
-            g = ET.Element("g")
-            for child in list(root):
-                g.append(child)
-                root.remove(child)
-            g.set("transform", transform_str)
-            root.append(g)
-
-        if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-            angle = kwargs.get('rotate_angle')
-            logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
-            g = ET.Element("g")
-            for child in list(root):
-                g.append(child)
-                root.remove(child)
-            g.set("transform", f"rotate({angle} {width/2} {height/2})")
-            root.append(g)
-
-        logger.info(f"[vector] Scaling SVG to ({w},{h})") if logger else None
+            root.set("viewBox", f"0 0 {target_width} {target_height}")
+            root.set("width", str(target_width))
+            root.set("height", str(target_height))
         
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = os.path.join(tmp_dir, "temp.svg")
             tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
-            project_callback(cv.svg2raster(tmp_path)) if project_callback else None
-            if save_image:
-                shutil.move(tmp_path, out_path)
-            else:
-                out_path = None
+            project_callback(cv.show_svg(tmp_path)) if project_callback else None
+            out_path = shutil.move(tmp_path, out_path) if save_image else None
             msg = f"[vector] SVG saved to {out_path}" if save_image else "[vector] SVG resized without saving"
             logger.info(msg) if logger else None
         return out_path
@@ -259,6 +300,7 @@ def transform_pdf(
                                 else:
                                     page.set_cropbox(fitz.Rect(0, 0, target_width, target_height))
                                 logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None
+                            
                             '''
                             if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
                                 flip = kwargs.get('flip')
@@ -349,45 +391,61 @@ def transform_eps_ps(
                                     f"(bbox lines: {n_bbox}, hires lines: {n_hires})")
             else:
                 shutil.copy(in_path, tmp_out)
-            # flip/rotate支持
-            flip_applied = False
-            rotate_applied = False
-            ext = in_fmt
-            # flip
+            
+            # ======== 读取 EPS 内容，准备注入变换矩阵 ========
+            with open(tmp_out, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+            width, height = get_script_size(tmp_out)
+
+            # 寻找注入点：第一个绘图命令前
+            draw_cmds = ("moveto", "lineto", "curveto", "stroke", "fill", "show")
+            insert_idx = None
+            for i, line in enumerate(lines):
+                if any(cmd in line for cmd in draw_cmds):
+                    insert_idx = i
+                    break
+            if insert_idx is None:
+                insert_idx = len(lines) - 1
+
+            # ======== 构造变换矩阵字符串 ========
+            transform_cmds = []
+
             if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-                flip = kwargs.get('flip')
-                axis = 0 if flip == 'LR' else 1
-                with open(tmp_out, "r", encoding="utf-8", errors="ignore") as f:
-                    lines = f.readlines()
-                insert_idx = 0
-                for i, line in enumerate(lines):
-                    if line.strip().startswith("%%BeginPageSetup"):
-                        insert_idx = i + 1
-                        break
-                scale_str = "-1 1 scale\n" if axis == 0 else "1 -1 scale\n"
-                lines.insert(insert_idx, scale_str)
-                with open(tmp_out, "w", encoding="utf-8") as f:
-                    f.writelines(lines)
-                flip_applied = True
+                flip = kwargs.get("flip", None)
+                if flip in ["LR", "TB"]:
+                    if flip == "LR":
+                        transform_cmds.append(f"-1 1 scale\n{width} neg 0 translate\n")
+                    else:
+                        transform_cmds.append(f"1 -1 scale\n0 {height} neg translate\n")
+            
                 if logger:
-                    logger.info(f"[vector] Flipped PS/EPS ({flip}) saved to {out_path}")
-            # rotate
+                    logger.info("[vector] Applied transforms: "
+                                f"flip={flip}, "
+                                f"insert_idx={insert_idx}")
             if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                angle = kwargs.get('rotate_angle')
-                with open(tmp_out, "r", encoding="utf-8", errors="ignore") as f:
-                    lines = f.readlines()
-                insert_idx = 0
-                for i, line in enumerate(lines):
-                    if line.strip().startswith("%%BeginPageSetup"):
-                        insert_idx = i + 1
-                        break
-                rotate_str = f"{angle} rotate\n"
-                lines.insert(insert_idx, rotate_str)
+                angle = kwargs.get("rotate_angle", None)
+                if angle is not None:
+                    # 通用 rotate + translate
+                    transform_cmds.append(f"{angle} rotate\n0 {-height} translate\n")
+
+                if logger:
+                    logger.info("[vector] Applied transforms: "
+                                f"rotate={angle}, "
+                                f"insert_idx={insert_idx}")
+
+            # 如果有变换，则插入 gsave/grestore
+            if transform_cmds:
+                lines.insert(insert_idx, "gsave\n" + "".join(transform_cmds))
+
+                # 在文件尾部加 grestore（如果没有）
+                if not any("grestore" in line for line in lines[-10:]):
+                    lines.append("\ngrestore\n")
+
                 with open(tmp_out, "w", encoding="utf-8") as f:
                     f.writelines(lines)
-                rotate_applied = True
-                if logger:
-                    logger.info(f"[vector] Rotated PS/EPS ({angle} deg) saved to {out_path}")
+
+                
+
             project_callback(cv.show_script(tmp_out, dpi=dpi)) if project_callback else None
             if save_image:
                 shutil.move(tmp_out, out_path)
