@@ -10,7 +10,7 @@ from src.frames.log_frame import LogFrame
 
 from src.tabs.about_tab import AboutTab
 from src.tabs.ink_tab import InkTab
-from src.tabs.resize_tab import ResizeTab
+from src.tabs.transform_tab import TransformTab
 from src.tabs.tool_tab import ToolTab
 from src.tabs.convertion_tab import ConvertionTab
 from src.frames.file_details_frame import FileDetailsFrame
@@ -79,17 +79,17 @@ class App(tk.Tk):
 
         # Create and add tabs
         convertion_tab = ConvertionTab(nb)
-        nb.add(convertion_tab, text="  Convertion  ")
+        nb.add(convertion_tab, text=" Convert ")
         enhance_tab = InkTab(nb)
-        nb.add(enhance_tab, text="  Workshop  ")
-        resize_tab = ResizeTab(nb)
-        nb.add(resize_tab, text="  Resize  ")
+        nb.add(enhance_tab, text=" Inkwork ")
+        transform_tab = TransformTab(nb)
+        nb.add(transform_tab, text=" Transform ")
         crop_tab = CropTab(nb)
-        nb.add(crop_tab, text="  Transform & Crop  ")
+        nb.add(crop_tab, text=" Crop ")
         tool_tab = ToolTab(nb)
-        nb.add(tool_tab, text="  Dependencies★  ")
+        nb.add(tool_tab, text=" Dependencies★ ")
         about_tab = AboutTab(nb)
-        nb.add(about_tab, text="  About  ")
+        nb.add(about_tab, text=" About ")
 
         nb.select(0)  # Enable Bitmap by default
 

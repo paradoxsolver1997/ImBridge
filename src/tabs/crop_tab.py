@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-import src.utils.scaler as sc
+import src.utils.cropper as cr
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
@@ -18,7 +18,6 @@ class CropTab(BaseTab):
         self.output_dir = os.path.join(self.output_dir, "transform_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
-
 
     def build_content(self):
 
@@ -59,10 +58,6 @@ class CropTab(BaseTab):
         # --- Crop 选项 ---
         crop_row = ttk.Frame(frm_5)
         crop_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
-
-        self.crop_flag_var = tk.BooleanVar(value=False)
-        crop_check = ttk.Checkbutton(crop_row, text="Crop after Resize", variable=self.crop_flag_var)
-        crop_check.pack(side="left", padx=(0, 8))
 
         cord_row = ttk.Frame(frm_5)
         cord_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
@@ -121,7 +116,7 @@ class CropTab(BaseTab):
         ttk.Button(
             preview_btn_row,
             text="Preview",
-            command=lambda: self.on_resize(save_flag=False)
+            command=lambda: self.on_crop(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
         save_btn_row = ttk.Frame(frm_7)
@@ -129,148 +124,64 @@ class CropTab(BaseTab):
         ttk.Button(
             save_btn_row,
             text="Save",
-            command=lambda: self.on_resize(save_flag=True)
+            command=lambda: self.on_crop(save_flag=True)
         ).pack(side="left", padx=8)
 
 
-    '''
-    def update_mode(self):
-        if self.mode_var.get() == 2:
-            self.scale_x_factor_labeled_entry.activate()
-            self.scale_y_factor_labeled_entry.activate()
-            self.width_entry.deactivate()
-            self.height_entry.deactivate()
-        elif self.mode_var.get() == 3:
-            self.scale_x_factor_labeled_entry.deactivate()
-            self.scale_y_factor_labeled_entry.deactivate()
-            self.width_entry.activate()
-            self.height_entry.activate()
-        else:
-            self.scale_x_factor_labeled_entry.deactivate()
-            self.scale_y_factor_labeled_entry.deactivate()
-            self.width_entry.deactivate()
-            self.height_entry.deactivate()
-
-
-    def on_resize(self, save_flag=False):
+    def on_crop(self, save_flag=False):
 
         file_list = self.io_frame.load_file_list()
         if not file_list:
             # 这里可以弹窗、日志或直接 return
             return
         
-        params = {
-            "sharpness": self.sharpness_var.get(),
-            "blur_radius": self.blur_radius_var.get(),
-            "median_size": self.median_size_var.get(),
-            "save_flag": save_flag,
-            "preview_flag": True
-        }
-        if self.crop_flag_var.get():
-            params.update({
-                "crop_box": (
-                    self.crop_x_var.get(),
-                    self.crop_y_var.get(),
-                    self.crop_x_var.get() + self.crop_w_var.get(),
-                    self.crop_y_var.get() + self.crop_h_var.get(),
-                )
-            })
-
-        if self.mode_var.get() == 2:
-            params.update({
-                "scale_x": self.scale_x_factor_var.get(),
-                "scale_y": self.scale_y_factor_var.get(),
-            })
-        elif self.mode_var.get() == 3:
-            params.update({
-                "new_width": self.width_var.get(),
-                "new_height": self.height_var.get(),
-            })
-
-        if self.rotate_angle_var.get() != 0:
-            params.update({
-                "rotate_angle": self.rotate_angle_var.get(),
-            })
-
-        if self.flip_horizontal_var.get():
-            params.update({
-                "flip_lr": True,
-            })
-        else:
-            params.update({
-                "flip_lr": False,
-            })
-
-        if self.flip_vertical_var.get():
-            params.update({
-                "flip_tb": True,
-            })
-        else:
-            params.update({
-                "flip_tb": False,
-            })
+        crop_box = (
+            self.crop_x_var.get(),
+            self.crop_y_var.get(),
+            self.crop_x_var.get() + self.crop_w_var.get(),
+            self.crop_y_var.get() + self.crop_h_var.get(),
+        )
 
         # 根据文件类型选择不同的resize方法
         in_path = file_list[0]
         ext = os.path.splitext(in_path)[1].lower()
         self.preview_frame.clear_preview()
         if ext in bitmap_formats:
-            sc.transform_image(
+            cr.crop_image(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
+                crop_box=crop_box,
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
-                logger=self.logger, 
-                **params)
+                image_preview_callback=self.preview_frame.show_image, 
+                logger=self.logger
+            )
         elif ext == '.svg':
-            sc.transform_svg(
+            cr.crop_svg(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
+                crop_box=crop_box,
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
-                logger=self.logger, 
-                **params)
+                file_preview_callback=self.preview_frame.show_file, 
+                logger=self.logger
+            )
         elif ext == '.pdf':
-            params.update({"dpi": self.preview_frame.dpi})
-            sc.transform_pdf(
+            cr.crop_pdf(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
+                crop_box=crop_box,
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
-                logger=self.logger, 
-                **params)
+                file_preview_callback=self.preview_frame.show_file, 
+                logger=self.logger
+            )
         elif ext in ['.eps', '.ps']:
-            params.update({"dpi": self.preview_frame.dpi})
-            sc.transform_eps_ps(
+            cr.crop_script(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
+                crop_box=crop_box,
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
-                logger=self.logger, 
-                **params)
+                file_preview_callback=self.preview_frame.show_file, 
+                logger=self.logger
+            )
         else:
             self.logger.error("Unsupported file format for resizing.")
         return
-
-        
-
-    def on_files_var_changed(self, *args):
-        files = self.io_frame.files_var.get().strip().split("\n")
-        files = [f for f in files if f.strip()]
-        vector_exts = ('.svg', '.pdf', '.eps', '.ps')
-        is_vector = False
-        if files:
-            # 只要有一个是矢量图就算矢量
-            for f in files:
-                if f.lower().endswith(vector_exts):
-                    is_vector = True
-                    break
-        if is_vector:
-            self.sharpness_entry.deactivate()
-            self.blur_radius_entry.deactivate()
-            self.median_size_entry.deactivate()
-        else:
-            self.sharpness_entry.activate()
-            self.blur_radius_entry.activate()
-            self.median_size_entry.activate()
-        '''

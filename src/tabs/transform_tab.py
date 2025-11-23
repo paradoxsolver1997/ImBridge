@@ -2,14 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from src.tabs.base_tab import BaseTab
-import src.utils.scaler as sc
+import src.utils.transformer as sc
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 from src.utils.commons import bitmap_formats
 
 
-class ResizeTab(BaseTab):
+class TransformTab(BaseTab):
 
     def __init__(self, parent, title=None):
         super().__init__(parent, title=title)
@@ -135,7 +135,7 @@ class ResizeTab(BaseTab):
         parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
         # The Parameter Settings
-        frm_4 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_4 = ttk.LabelFrame(parameter_row, text="Upscale Parameters", style="Bold.TLabelframe")
         frm_4.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
         self.sharpness_var = tk.DoubleVar(value=5.0)
@@ -168,20 +168,8 @@ class ResizeTab(BaseTab):
         )
         self.median_size_entry.pack(side="top", fill="x", padx=(2, 8))
 
-        frm_6 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_6 = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
         frm_6.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
-        # 旋转角度下拉菜单
-        self.rotate_angle_var = tk.IntVar(value=0)
-        ttk.Label(frm_6, text="Rotate (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
-        self.rotate_angle_combo = ttk.Combobox(
-            frm_6,
-            textvariable=self.rotate_angle_var,
-            values=[0, 90, 180, 270],
-            state="readonly",
-            width=6
-        )
-        self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
 
         # Flip horizontally
         self.flip_horizontal_var = tk.BooleanVar(value=False)
@@ -202,11 +190,27 @@ class ResizeTab(BaseTab):
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
 
 
-        frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_7 = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
         frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
+        # 旋转角度下拉菜单
+        self.rotate_angle_var = tk.IntVar(value=0)
+        ttk.Label(frm_7, text="Angle (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
+        self.rotate_angle_combo = ttk.Combobox(
+            frm_7,
+            textvariable=self.rotate_angle_var,
+            values=[0, 90, 180, 270],
+            state="readonly",
+            width=6
+        )
+        self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
+
+
+        frm_8 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_8.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+
         # --- Preview 按钮 ---
-        preview_btn_row = ttk.Frame(frm_7)
+        preview_btn_row = ttk.Frame(frm_8)
         preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             preview_btn_row,
@@ -214,7 +218,7 @@ class ResizeTab(BaseTab):
             command=lambda: self.on_resize(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
-        save_btn_row = ttk.Frame(frm_7)
+        save_btn_row = ttk.Frame(frm_8)
         save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             save_btn_row,
@@ -322,7 +326,7 @@ class ResizeTab(BaseTab):
                 **params)
         elif ext in ['.eps', '.ps']:
             params.update({"dpi": self.preview_frame.dpi})
-            sc.transform_eps_ps(
+            sc.transform_script(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,

@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, Callable
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
 import os
 import tempfile
 import re
@@ -21,12 +21,17 @@ from src.utils.commons import compute_trans_matrix
 
 def crop_image(
     in_path: str,
-    out_path: str,
+    out_dir: str,
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
-    project_callback: Optional[Callable] = None,
+    image_preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None
 ) -> Optional[str]:
+
+    base_name = os.path.splitext(os.path.basename(in_path))[0]
+    in_fmt = os.path.splitext(in_path)[1].lower()
+    suffix = "cropped"
+    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
     # 自动获取目标尺寸
     img = Image.open(in_path)
@@ -39,7 +44,10 @@ def crop_image(
         out_path = None
     msg = f"[crop] saved to: {out_path}" if save_image else "[crop] image cropped without saving"
     logger.info(msg) if logger else None
-    project_callback(img) if project_callback else None
+    if save_image:
+        image_preview_callback(img) if image_preview_callback else None
+    else:
+        image_preview_callback(display_crop(Image.open(in_path), crop_box)) if image_preview_callback else None
     return out_path
 
 
@@ -48,7 +56,7 @@ def crop_svg(
     out_dir: str,
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
-    project_callback: Optional[Callable] = None,
+    file_preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
 
@@ -82,7 +90,7 @@ def crop_svg(
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = os.path.join(tmp_dir, "temp.svg")
             tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
-            project_callback(cv.show_svg(tmp_path)) if project_callback else None
+            file_preview_callback(tmp_path) if file_preview_callback else None
             out_path = shutil.move(tmp_path, out_path) if save_image else None
             msg = f"[vector] SVG saved to {out_path}" if save_image else "[vector] SVG resized without saving"
             logger.info(msg) if logger else None
@@ -96,9 +104,8 @@ def crop_pdf(
     out_dir: str,
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
-    project_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None,
-    **kwargs
+    file_preview_callback: Optional[Callable] = None,
+    logger: Optional[Logger] = None
 ) -> Optional[str]:
     
     base_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -107,7 +114,7 @@ def crop_pdf(
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
     if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-        dpi = kwargs.get('dpi')
+
         # 用PyMuPDF整体缩放纯矢量PDF内容
         with tempfile.TemporaryDirectory() as tmp_dir:
             # 1. 先用 wash_eps_ps 清洗，输出到 out_path
@@ -133,19 +140,15 @@ def crop_pdf(
                             
                             if confirm_cropbox(crop_box, (orig_width, orig_height)):
                                 # crop_box: (left, top, right, bottom)
-                                x = float(crop_box[0])
-                                y = float(crop_box[1])
-                                w = float(crop_box[2] - crop_box[0])
-                                h = float(crop_box[3] - crop_box[1])
                                 # page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
-                                new_page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
-                                logger.info(f"[vector] Set cropbox to ({x},{y},{w},{h})") if logger else None
+                                new_page.set_cropbox(fitz.Rect(*crop_box))
+                                logger.info(f"[vector] Set cropbox to {crop_box}") if logger else None
                             else:
                                 page.set_cropbox(fitz.Rect(0, 0, orig_width, orig_height))
                             
                         tmp_path = os.path.join(tmp_dir, "temp.pdf")
                         new_doc.save(tmp_path)
-                project_callback(cv.show_script(tmp_path, dpi=dpi)) if project_callback else None
+                file_preview_callback(tmp_path) if file_preview_callback else None
                 out_path = shutil.move(tmp_path, out_path) if save_image else None
                 msg = f"[vector] PDF saved to {out_path}" if save_image else "[vector] PDF resized without saving"
                 logger.info(msg) if logger else None
@@ -154,14 +157,13 @@ def crop_pdf(
                 raise RuntimeError(f"PDF crop/resize failed: {e}")
 
 
-def crop_eps_ps(
+def crop_script(
     in_path: str,
     out_dir: str,
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
-    project_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None,
-    **kwargs
+    file_preview_callback: Optional[Callable] = None,
+    logger: Optional[Logger] = None
 ) -> Optional[str]:
     """
     Resize or crop EPS/PS file by editing BoundingBox and HiResBoundingBox.
@@ -178,7 +180,6 @@ def crop_eps_ps(
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
     
     if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-        dpi = kwargs.get("dpi", 96)
         orig_width, orig_height = get_script_size(in_path)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -190,22 +191,20 @@ def crop_eps_ps(
             
             if confirm_cropbox(crop_box, (orig_width, orig_height)):
                 change_bbox(
-                    in_path=tmp_out_0, 
-                    out_path=tmp_out_1,
+                    in_path=in_path, 
+                    out_path=tmp_out_0,
                     old_bbox=(0, 0, orig_width, orig_height),
                     new_bbox=crop_box, 
                     logger=logger
                 )
                 update_matrix(
-                    tmp_out_1, 
-                    tmp_out_1, 
+                    tmp_out_0, 
+                    tmp_out_0, 
                     translate=[crop_box[0], crop_box[1]]
                 )
-            else:
-                shutil.copy(tmp_out_0, tmp_out_1)
             
-            project_callback(cv.show_script(tmp_out_1, dpi=dpi)) if project_callback else None
-            out_path = shutil.move(tmp_out_1, out_path) if save_image else None
+            file_preview_callback(tmp_out_0) if file_preview_callback else None
+            out_path = shutil.move(tmp_out_0, out_path) if save_image else None
         return out_path
 
 def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
@@ -353,3 +352,42 @@ def change_bbox(
         )
 
     return (new_w, new_h)
+
+
+def display_crop(img, crop_box, box_color="white", box_width=3, mask_opacity=120):
+    """
+    在图像上绘制裁剪框，并在其外部加半透明遮罩。
+    
+    参数:
+        img: Image.Image
+        crop_box: (x, y, w, h) - 左上角 + 宽高
+        box_color: 裁剪框颜色 (默认白色更清晰)
+        box_width: 边框宽度
+        mask_opacity: 遮罩透明度，范围 0-255（越大越暗）
+    """
+    x, y, x2, y2 = crop_box
+
+    # 复制一份图像，不修改原图
+    img_out = img.copy().convert("RGBA")
+
+    # 创建一个与图像大小相同的透明图层，用于添加遮罩
+    mask_layer = Image.new("RGBA", img_out.size, (0, 0, 0, 0))
+    mask_draw = ImageDraw.Draw(mask_layer)
+
+    # 半透明遮罩（框外）
+    width, height = img_out.size
+
+    # 绘制四个方向的遮罩
+    mask_draw.rectangle([(0, 0), (width, y)], fill=(0, 0, 0, mask_opacity))               # 上
+    mask_draw.rectangle([(0, y2), (width, height)], fill=(0, 0, 0, mask_opacity))        # 下
+    mask_draw.rectangle([(0, y), (x, y2)], fill=(0, 0, 0, mask_opacity))                 # 左
+    mask_draw.rectangle([(x2, y), (width, y2)], fill=(0, 0, 0, mask_opacity))            # 右
+
+    # 将遮罩层叠加到图像
+    img_out = Image.alpha_composite(img_out, mask_layer)
+
+    # 最后画裁剪框（为了更突出，建议白色）
+    draw = ImageDraw.Draw(img_out)
+    draw.rectangle([x, y, x2, y2], outline=box_color, width=box_width)
+
+    return img_out.convert("RGB")
