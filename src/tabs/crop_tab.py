@@ -9,7 +9,7 @@ from src.frames.title_frame import TitleFrame
 from src.utils.commons import bitmap_formats
 
 
-class ResizeTab(BaseTab):
+class CropTab(BaseTab):
 
     def __init__(self, parent, title=None):
         super().__init__(parent, title=title)
@@ -18,7 +18,7 @@ class ResizeTab(BaseTab):
         self.output_dir = os.path.join(self.output_dir, "transform_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
-        self.update_mode()
+
 
     def build_content(self):
 
@@ -44,163 +44,73 @@ class ResizeTab(BaseTab):
 
         self.io_frame = InputOutputFrame(self, **parameters)
         self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
+        '''
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
-
-        option_row = ttk.Frame(self)
-        option_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
-
-        # Row 1: Mode Selection
-        # The Upscale options
-        frm_1 = ttk.LabelFrame(option_row, text="Option 1. Original", style="Bold.TLabelframe")
-        frm_1.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-        
-        ttk.Radiobutton(
-            frm_1, 
-            text='Original Size', 
-            variable=self.mode_var, 
-            value=1, 
-            command=self.update_mode
-        ).pack(side="left", padx=(6, 8))
-
-        # The Upscale options
-        frm_2 = ttk.LabelFrame(option_row, text="Option 2. Scale", style="Bold.TLabelframe")
-        frm_2.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-        
-        ttk.Radiobutton(
-            frm_2, 
-            text='Scale', 
-            variable=self.mode_var, 
-            value=2, 
-            command=self.update_mode
-        ).pack(side="left", padx=(6, 8))
-        
-        self.scale_x_factor_var = tk.DoubleVar(value=1.0)
-        self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
-            frm_2,
-            var=self.scale_x_factor_var,
-            bounds=(0.001, 2.0),
-            label_prefix="x",
-            width=6,
-        )
-        self.scale_x_factor_labeled_entry.pack(side="left", padx=(6, 8))
-
-        self.scale_y_factor_var = tk.DoubleVar(value=1.0)
-        self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
-            frm_2,
-            var=self.scale_y_factor_var,
-            bounds=(0.001, 2.0),
-            label_prefix="y",
-            width=6,
-        )
-        self.scale_y_factor_labeled_entry.pack(side="left", padx=(6, 8))
-
-        # The Upscale options
-        frm_3 = ttk.LabelFrame(option_row, text="Option 3. Resize", style="Bold.TLabelframe")
-        frm_3.pack(side="left", padx=8, pady=8, fill="both",expand=True)
-
-        ttk.Radiobutton(
-            frm_3, 
-            text='Resize', 
-            variable=self.mode_var, 
-            value=3, 
-            command=self.update_mode
-        ).pack(side="left", padx=(6, 8))
-
-        row_2 = ttk.Frame(frm_3)
-        row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
-
-        self.width_var = tk.IntVar(value=1024)
-        self.width_entry = LabeledValidatedEntry(
-            row_2,
-            var=self.width_var,
-            bounds=(1, 10000),
-            label_prefix="W",
-            width=6,
-        )
-        self.width_entry.pack(side="left", padx=(6, 2))
-
-        self.height_var = tk.IntVar(value=1024)
-        self.height_entry = LabeledValidatedEntry(
-            row_2,
-            var=self.height_var,
-            bounds=(1, 10000),
-            label_prefix="H",
-            width=6,
-        )
-        self.height_entry.pack(side="left", padx=(2, 2))
+        '''
 
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
         parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
-        # The Parameter Settings
-        frm_4 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_4.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+        frm_5 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_5.pack(side="left", padx=8, pady=8, fill="y",expand=True)
 
-        self.sharpness_var = tk.DoubleVar(value=5.0)
-        self.sharpness_entry = LabeledValidatedEntry(
-            frm_4,
-            var=self.sharpness_var,
-            bounds=(0.0, 10.0),
-            label_prefix="Sharpness",
-            width=6,
+        # --- Crop 选项 ---
+        crop_row = ttk.Frame(frm_5)
+        crop_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+
+        self.crop_flag_var = tk.BooleanVar(value=False)
+        crop_check = ttk.Checkbutton(crop_row, text="Crop after Resize", variable=self.crop_flag_var)
+        crop_check.pack(side="left", padx=(0, 8))
+
+        cord_row = ttk.Frame(frm_5)
+        cord_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+
+        self.crop_x_var = tk.IntVar(value=0)
+        self.crop_x_entry = LabeledValidatedEntry(
+            cord_row,
+            var=self.crop_x_var,
+            bounds=(0, 10000),
+            label_prefix="X",
+            width=5,
         )
-        self.sharpness_entry.pack(side="top", fill="x", padx=(2, 2))
+        self.crop_x_entry.pack(side="left", padx=(2, 2))
 
-        self.blur_radius_var = tk.DoubleVar(value=1.0)
-        self.blur_radius_entry = LabeledValidatedEntry(
-            frm_4,
-            var=self.blur_radius_var,
-            bounds=(0.0, 10.0),
-            label_prefix="Blur Radius",
-            width=6,
+        self.crop_y_var = tk.IntVar(value=0)
+        self.crop_y_entry = LabeledValidatedEntry(
+            cord_row,
+            var=self.crop_y_var,
+            bounds=(0, 10000),
+            label_prefix="Y",
+            width=5,
         )
-        self.blur_radius_entry.pack(side="top", fill="x", padx=(2, 2))
+        self.crop_y_entry.pack(side="left", padx=(2, 2))
 
-        self.median_size_var = tk.IntVar(value=3)
-        self.median_size_entry = LabeledValidatedEntry(
-            frm_4,
-            var=self.median_size_var,
-            bounds=(1, 15),
-            label_prefix="Median Size",
-            width=6,
+        size_row = ttk.Frame(frm_5)
+        size_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+
+        self.crop_w_var = tk.IntVar(value=100)
+        self.crop_w_entry = LabeledValidatedEntry(
+            size_row,
+            var=self.crop_w_var,
+            bounds=(1, 10000),
+            label_prefix="W",
+            width=5,
         )
-        self.median_size_entry.pack(side="top", fill="x", padx=(2, 8))
+        self.crop_w_entry.pack(side="left", padx=(2, 2))
 
-        frm_6 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_6.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
-        # 旋转角度下拉菜单
-        self.rotate_angle_var = tk.IntVar(value=0)
-        ttk.Label(frm_6, text="Rotate (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
-        self.rotate_angle_combo = ttk.Combobox(
-            frm_6,
-            textvariable=self.rotate_angle_var,
-            values=[0, 90, 180, 270],
-            state="readonly",
-            width=6
+        self.crop_h_var = tk.IntVar(value=100)
+        self.crop_h_entry = LabeledValidatedEntry(
+            size_row,
+            var=self.crop_h_var,
+            bounds=(1, 10000),
+            label_prefix="H",
+            width=5,
         )
-        self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
+        self.crop_h_entry.pack(side="left", padx=(2, 2))
 
-        # Flip horizontally
-        self.flip_horizontal_var = tk.BooleanVar(value=False)
-        self.flip_horizontal_check = ttk.Checkbutton(
-            frm_6,
-            text="Flip Left-Right",
-            variable=self.flip_horizontal_var
-        )
-        self.flip_horizontal_check.pack(side="top", anchor="w", padx=6, pady=(0,4))
-
-        # Flip vertically
-        self.flip_vertical_var = tk.BooleanVar(value=False)
-        self.flip_vertical_check = ttk.Checkbutton(
-            frm_6,
-            text="Flip Top-Bottom",
-            variable=self.flip_vertical_var
-        )
-        self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
-
+        
 
         frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
         frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
@@ -223,7 +133,7 @@ class ResizeTab(BaseTab):
         ).pack(side="left", padx=8)
 
 
-
+    '''
     def update_mode(self):
         if self.mode_var.get() == 2:
             self.scale_x_factor_labeled_entry.activate()
@@ -256,7 +166,16 @@ class ResizeTab(BaseTab):
             "save_flag": save_flag,
             "preview_flag": True
         }
-        
+        if self.crop_flag_var.get():
+            params.update({
+                "crop_box": (
+                    self.crop_x_var.get(),
+                    self.crop_y_var.get(),
+                    self.crop_x_var.get() + self.crop_w_var.get(),
+                    self.crop_y_var.get() + self.crop_h_var.get(),
+                )
+            })
+
         if self.mode_var.get() == 2:
             params.update({
                 "scale_x": self.scale_x_factor_var.get(),
@@ -354,3 +273,4 @@ class ResizeTab(BaseTab):
             self.sharpness_entry.activate()
             self.blur_radius_entry.activate()
             self.median_size_entry.activate()
+        '''

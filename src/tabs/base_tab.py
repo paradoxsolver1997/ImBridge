@@ -82,6 +82,13 @@ class BaseTab(BaseFrame):
                     logger=self.logger,
                 )
             # 脚本(pdf/eps/ps) -> 脚本(pdf/eps/ps)
+            elif in_ext == ".pdf" and out_ext in [".eps", ".ps"]:
+                out_path = cv.pdf2script(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    logger=self.logger,
+                )
             elif in_ext in script_formats and out_ext in script_formats:
                 out_path = cv.script_convert(
                     in_path=f,

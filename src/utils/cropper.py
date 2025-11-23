@@ -19,61 +19,20 @@ from src.utils.commons import get_script_size
 from src.utils.commons import compute_trans_matrix
 
 
-pattern_in_byte = re.compile(
-        br"""
-        ^(?!\s*/)
-
-        (?P<prefix>.*?)
-
-        (?:
-            (?P<vals1>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+
-                    [-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s+cm
-            |
-            \[\s*(?P<vals2>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+
-                        [-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s*\]
-        )
-
-        (?P<suffix>.*)$
-        """,
-        re.VERBOSE
-    )
-
-def transform_image(
+def crop_image(
     in_path: str,
     out_path: str,
+    crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     project_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None,
-    **kwargs
+    logger: Optional[Logger] = None
 ) -> Optional[str]:
 
     # 自动获取目标尺寸
     img = Image.open(in_path)
-    if 'new_width' in kwargs and 'new_height' in kwargs:
-        new_width = int(kwargs['new_width'])
-        new_height = int(kwargs['new_height'])
-    elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-        scale_x = float(kwargs['scale_x'])
-        scale_y = float(kwargs['scale_y'])
-        new_width = int(img.width * scale_x)
-        new_height = int(img.height * scale_y)
-    else:
-        new_width = img.width
-        new_height = img.height
-
-    img = resize_raster(img, (new_width, new_height), logger=logger, **kwargs)
-    
-    if 'rotate_angle' in kwargs:
-        angle = kwargs.get('rotate_angle')
-        logger.info(f"[crop] rotate image by {angle} degrees") if logger else None
-        img = img.rotate(angle, expand=True)
-
-    if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-        flip = kwargs.get('flip')
-        direction = Image.FLIP_LEFT_RIGHT if flip == 'LR' else Image.FLIP_TOP_BOTTOM
-        img = img.transpose(direction)
-        logger.info(f"[crop] flip image {flip}") if logger else None
-    
+    if confirm_cropbox(crop_box, (img.width, img.height)):
+        logger.info(f"[crop] crop box: {crop_box}") if logger else None
+        img = img.crop(crop_box)
     if save_image:
         img.save(out_path)
     else:
@@ -84,59 +43,18 @@ def transform_image(
     return out_path
 
 
-def resize_raster(
-    img: Image.Image,
-    new_size: Tuple[int, int],
-    logger: Optional[Logger] = None,
-    **kwargs
-) -> Image.Image:
-    """Crop and enhance raster image."""
-    new_width, new_height = new_size
-    logger.info(f"[enhance] resize to: {(new_width, new_height)}") if logger else None
-
-    # Separate alpha channel
-    if img.mode == "RGBA":
-        rgb = img.convert("RGB")
-        alpha = img.getchannel("A").resize(
-            (new_width, new_height), Image.Resampling.LANCZOS
-        )
-        img_2 = rgb.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    else:
-        img_2 = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        alpha = None
-
-    if new_height > img.height and new_width > img.width:
-        logger.info("[enhance] sharpen") if logger else None
-        enhancer = ImageEnhance.Sharpness(img_2)
-        img_2 = enhancer.enhance(kwargs.get('sharpness', 5.0))
-        logger.info("[enhance] gaussian blur") if logger else None
-        img_2 = img_2.filter(ImageFilter.GaussianBlur(radius=kwargs.get('blur_radius', 1.0)))
-        logger.info("[enhance] median filter") if logger else None
-        img_2 = img_2.filter(ImageFilter.MedianFilter(size=kwargs.get('median_size', 3)))
-        logger.info("[enhance] enhance contrast") if logger else None
-        # Merge alpha channel
-        if alpha is not None:
-            img_2 = img_2.convert("RGBA")
-            img_2.putalpha(alpha)
-        logger.info("Upscale finished.") if logger else None
-    return img_2
-
-
-def transform_svg(
+def crop_svg(
     in_path: str,
     out_dir: str,
+    crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     project_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None,
-    **kwargs
+    logger: Optional[Logger] = None
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
-    
-    def mat2str(mat: list[float, float, float, float, float, float]) -> str:
-        return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
 
     base_name = os.path.splitext(os.path.basename(in_path))[0]
     in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "resized"
+    suffix = "cropped"
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
     try:
@@ -147,68 +65,20 @@ def transform_svg(
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
     
-    mat = compute_trans_matrix()
-
-    if 'new_width' in kwargs and 'new_height' in kwargs:
-        target_width = float(kwargs['new_width'])
-        target_height = float(kwargs['new_height'])
-        scale_x = target_width / orig_width
-        scale_y = target_height / orig_height
-    elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-        scale_x = float(kwargs['scale_x'])
-        scale_y = float(kwargs['scale_y'])
-        target_width = orig_width * scale_x
-        target_height = orig_height * scale_y
-    else:
-        scale_x = 1.0
-        scale_y = 1.0
-        target_width = orig_width
-        target_height = orig_height
-    tmp_out_0 = os.path.join(tmp_dir, "temp.svg")
-    update_matrix(tmp_out_0, tmp_out_0, scale=(scale_x, scale_y))
-    root.set("viewBox", f"0 0 {target_width} {target_height}")
-    root.set("width", str(target_width))
-    root.set("height", str(target_height))
-
-    if 'flip_lr' in kwargs and kwargs['flip_lr']:
-        update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_width, 0])
-    if 'flip_tb' in kwargs and kwargs['flip_tb']:
-        update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_height])
-
-    if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-        angle = kwargs['rotate_angle'] % 360
-        # 如果旋转90或270度，需要交换width和height
-        if angle in [90, 270]:
-            temp_value = target_width
-            target_width = target_height
-            target_height = temp_value
-            root.set("viewBox", f"0 0 {target_width} {target_height}")
-            root.set("width", str(target_width))
-            root.set("height", str(target_height))
-        angle_map = {
-            0: [0, 0],
-            90: [0, target_height],
-            180: [target_width, target_height],
-            270: [target_width, 0],
-        }
-        mat = compute_trans_matrix(
-            mat, 
-            rotate_angle=angle, 
-            translate=angle_map.get(angle, [0, 0])
-        )
-        logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
-
     try:
-        g = ET.Element("g")
-        for child in list(root):
-            g.append(child)
-            root.remove(child)
-        g.set("transform", " ".join([mat2str(mat)]))
-        root.append(g)
-    except Exception as e:
-        raise RuntimeError(f"SVG transform failed: {e}")
-
-    try:       
+        if confirm_cropbox(crop_box, (orig_width, orig_height)):
+            # crop_box: (left, top, right, bottom)
+            x = crop_box[0]
+            y = crop_box[1]
+            w = crop_box[2] - crop_box[0]
+            h = crop_box[3] - crop_box[1]
+            logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
+            root.set("viewBox", f"{x} {y} {w} {h}")
+            root.set("width", str(w))
+            root.set("height", str(h))
+        else:
+            root.set("viewBox", f"0 0 {orig_width} {orig_height}")
+        
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = os.path.join(tmp_dir, "temp.svg")
             tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
@@ -221,9 +91,10 @@ def transform_svg(
         raise RuntimeError(f"SVG crop/resize failed: {e}")
 
 
-def transform_pdf(
+def crop_pdf(
     in_path: str,
     out_dir: str,
+    crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     project_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
@@ -232,7 +103,7 @@ def transform_pdf(
     
     base_name = os.path.splitext(os.path.basename(in_path))[0]
     in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "resized"
+    suffix = "cropped"
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
     if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
@@ -248,25 +119,8 @@ def transform_pdf(
                             rect = page.rect
                             orig_width = rect.width
                             orig_height = rect.height
-                            # 计算缩放因子
-                
-                            if 'new_width' in kwargs and 'new_height' in kwargs:
-                                target_width = float(kwargs['new_width'])
-                                target_height = float(kwargs['new_height'])
-                                scale_x = target_width / orig_width
-                                scale_y = target_height / orig_height
-                            elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-                                scale_x = float(kwargs['scale_x'])
-                                scale_y = float(kwargs['scale_y'])
-                                target_width = orig_width * scale_x
-                                target_height = orig_height * scale_y
-                            else:
-                                scale_x = 1.0
-                                scale_y = 1.0
-                                target_width = orig_width
-                                target_height = orig_height
-                            logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None
-                            new_page = new_doc.new_page(width=target_width, height=target_height)
+
+                            new_page = new_doc.new_page(width=orig_width, height=orig_height)
                             new_page.show_pdf_page(
                                 new_page.rect,  # 目标矩形
                                 doc,  # 源文档
@@ -276,14 +130,19 @@ def transform_pdf(
                                 keep_proportion=False,  # 不保持比例(使用我们的缩放)
                                 overlay=True
                             )
-                            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                                angle = kwargs.get('rotate_angle')
-                                logger.info(f"[vector] Rotating PDF page by {angle} degrees") if logger else None
-                                new_page.set_rotation(angle)
-
-                            if 'flip_lr' in kwargs or 'flip_tb' in kwargs:
-                                logger.error(f"[vector] Flipping PDF page is not supported.") if logger else None
-
+                            
+                            if confirm_cropbox(crop_box, (orig_width, orig_height)):
+                                # crop_box: (left, top, right, bottom)
+                                x = float(crop_box[0])
+                                y = float(crop_box[1])
+                                w = float(crop_box[2] - crop_box[0])
+                                h = float(crop_box[3] - crop_box[1])
+                                # page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
+                                new_page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
+                                logger.info(f"[vector] Set cropbox to ({x},{y},{w},{h})") if logger else None
+                            else:
+                                page.set_cropbox(fitz.Rect(0, 0, orig_width, orig_height))
+                            
                         tmp_path = os.path.join(tmp_dir, "temp.pdf")
                         new_doc.save(tmp_path)
                 project_callback(cv.show_script(tmp_path, dpi=dpi)) if project_callback else None
@@ -295,9 +154,10 @@ def transform_pdf(
                 raise RuntimeError(f"PDF crop/resize failed: {e}")
 
 
-def transform_eps_ps(
+def crop_eps_ps(
     in_path: str,
     out_dir: str,
+    crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     project_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
@@ -314,81 +174,38 @@ def transform_eps_ps(
 
     base_name = os.path.splitext(os.path.basename(in_path))[0]
     in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "resized"
+    suffix = "cropped"
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
     
     if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
         dpi = kwargs.get("dpi", 96)
         orig_width, orig_height = get_script_size(in_path)
-        if 'new_width' in kwargs and 'new_height' in kwargs:
-            target_width = float(kwargs['new_width'])
-            target_height = float(kwargs['new_height'])
-            scale_x = target_width / orig_width
-            scale_y = target_height / orig_height
-        elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-            scale_x = float(kwargs['scale_x'])
-            scale_y = float(kwargs['scale_y'])
-            target_width = orig_width * scale_x
-            target_height = orig_height * scale_y
-        else:
-            scale_x = 1.0
-            scale_y = 1.0
-            target_width = orig_width
-            target_height = orig_height
 
         with tempfile.TemporaryDirectory() as tmp_dir:
 
             tmp_out_0 = os.path.join(tmp_dir, "temp_0.eps")
+            tmp_out_1 = os.path.join(tmp_dir, "temp_1.eps")
+            tmp_out_2 = os.path.join(tmp_dir, "temp_2.eps")
+            tmp_out_3 = os.path.join(tmp_dir, "temp_3.eps")
             
-            # if 'rotate_angle' in kwargs and (kwargs.get('rotate_angle') % 360 in [90, 270]):
-            target_size = max(target_width, target_height)
-
-            update_matrix(in_path, tmp_out_0, scale=(scale_x, scale_y))   
-            change_bbox(
+            if confirm_cropbox(crop_box, (orig_width, orig_height)):
+                change_bbox(
                     in_path=tmp_out_0, 
-                    out_path=tmp_out_0, 
+                    out_path=tmp_out_1,
                     old_bbox=(0, 0, orig_width, orig_height),
-                    new_bbox=(0, 0, target_size, target_size),
+                    new_bbox=crop_box, 
                     logger=logger
                 )
-
-            if 'flip_lr' in kwargs and kwargs['flip_lr']:
-                update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_size, 0])
-
-            if 'flip_tb' in kwargs and kwargs['flip_tb']: 
-                update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_size])           
-
-            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                angle = kwargs.get('rotate_angle') % 360
-                # 如果旋转90或270度，需要交换width和height
-                if angle in [90, 270]:
-                    temp_value = target_width
-                    target_width = target_height
-                    target_height = temp_value
-                angle_map = {
-                    0: [0, 0],
-                    90: [0, target_height],
-                    180: [target_width, target_height],
-                    270: [target_width, 0],
-                }
                 update_matrix(
-                    tmp_out_0, 
-                    tmp_out_0, 
-                    rotate_angle=angle, 
-                    translate=angle_map.get(angle, [0, 0])
+                    tmp_out_1, 
+                    tmp_out_1, 
+                    translate=[crop_box[0], crop_box[1]]
                 )
-                logger.info(f"[vector] Rotating EPS by {angle} degrees") if logger else None
+            else:
+                shutil.copy(tmp_out_0, tmp_out_1)
             
-            change_bbox(
-                in_path=tmp_out_0, 
-                out_path=tmp_out_0, 
-                old_bbox=(0, 0, orig_width, orig_height),
-                new_bbox=(0, 0, target_width, target_height),
-                logger=logger
-            )
-
-            project_callback(cv.show_script(tmp_out_0, dpi=dpi)) if project_callback else None
-            out_path = shutil.move(tmp_out_0, out_path) if save_image else None
+            project_callback(cv.show_script(tmp_out_1, dpi=dpi)) if project_callback else None
+            out_path = shutil.move(tmp_out_1, out_path) if save_image else None
         return out_path
 
 def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
@@ -400,9 +217,9 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
     
     pattern = re.compile(
         r"""
-        ^(?!\s*/)
+        ^(?!\s*/)                                              # 不允许以 / 开头（跳过命令行）
 
-        (?P<prefix>.*?)
+        (?P<prefix>.*?)                                        # 前导内容
 
         (?:
             (?P<vals1>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+
@@ -412,7 +229,7 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
                         [-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s*\]
         )
 
-        (?P<suffix>.*)$
+        (?P<suffix>.*)$                                        # 后缀
         """,
         re.VERBOSE
     )
@@ -446,8 +263,8 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
             lines[mat_line_idx] = pattern.sub(new_line, lines[mat_line_idx])
         logger.info(f"[vector] EPS/PS transform matrix replaced: {mat}") if logger else None
         logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.writelines(lines)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
 
 
 def change_bbox(
@@ -522,21 +339,7 @@ def change_bbox(
     # ----------------- 执行替换 -----------------
     content, n_bbox = pattern_bbox.subn(repl_bbox, content)
     content, n_hires = pattern_hires.subn(repl_hires, content)
-    # content, n_wh = pattern_wh_float.subn(repl_wh, content)
-    lines = content.split(b"\n")
-    new_lines = []
-
-    for line in lines:
-        # 跳过 cm / bracket matrix 行
-        if pattern_in_byte.match(line):
-            new_lines.append(line)
-            continue
-
-        # 对其他行做 W H 匹配替换
-        new_line, n_wh = pattern_wh_int.subn(repl_wh, line)
-        new_lines.append(new_line)
-
-    content = b"\n".join(new_lines)
+    content, n_wh = pattern_wh_float.subn(repl_wh, content)
 
 
     # ----------------- 写回文件 -----------------

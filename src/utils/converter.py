@@ -320,3 +320,43 @@ def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Im
     return img
 
 
+def pdf2script(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None):
+    """
+    使用 pdf2ps 将 PDF 转换为 PS 或 EPS。
+    
+    参数:
+        in_path (str): 输入 PDF 文件路径
+        out_path (str): 输出 PS/EPS 文件路径
+        out_fmt (str): ".ps" 或 ".eps"
+    """
+    print("CALLED!")
+    base_name = os.path.splitext(os.path.basename(in_path))[0]
+    in_fmt = ".pdf"
+    suffix = in_fmt.lstrip(".") + "2" + out_fmt.lstrip(".")
+    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
+
+    # 检查格式参数
+    if out_fmt not in (".ps", ".eps"):
+        raise ValueError("out_fmt must be '.ps' or '.eps'")
+
+    # 自动修正输出文件后缀
+    if not out_path.endswith(out_fmt):
+        out_path = os.path.splitext(out_path)[0] + out_fmt
+
+    cmd = ["pdftops"]
+
+    # EPS 模式必须加 -eps
+    if out_fmt == ".eps":
+        cmd.append("-eps")
+
+    # 输入/输出
+    cmd.extend([in_path, out_path])
+
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"转换完成：{out_path}")
+    except subprocess.CalledProcessError as e:
+        print("转换失败:", e)
+        raise
+
+    return out_path

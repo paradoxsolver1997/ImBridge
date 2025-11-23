@@ -14,6 +14,7 @@ from src.tabs.resize_tab import ResizeTab
 from src.tabs.tool_tab import ToolTab
 from src.tabs.convertion_tab import ConvertionTab
 from src.frames.file_details_frame import FileDetailsFrame
+from src.tabs.crop_tab import CropTab
 
 
 def init_styles():
@@ -71,7 +72,7 @@ class App(tk.Tk):
 
         self.list_window = tk.Toplevel(self)
         self.list_window.title(f"文件详细信息 - {self.title}")
-        
+        self.list_window.protocol("WM_DELETE_WINDOW", self.hide_list_window)
         self.file_details_frame = FileDetailsFrame(self.list_window)
         self.file_details_frame.pack(fill="both", expand=True)
         self.list_window.withdraw()
@@ -82,7 +83,9 @@ class App(tk.Tk):
         enhance_tab = InkTab(nb)
         nb.add(enhance_tab, text="  Workshop  ")
         resize_tab = ResizeTab(nb)
-        nb.add(resize_tab, text="  Resize & Crop  ")
+        nb.add(resize_tab, text="  Resize  ")
+        crop_tab = CropTab(nb)
+        nb.add(crop_tab, text="  Transform & Crop  ")
         tool_tab = ToolTab(nb)
         nb.add(tool_tab, text="  Dependencies★  ")
         about_tab = AboutTab(nb)
@@ -99,3 +102,6 @@ class App(tk.Tk):
         if hasattr(current_tab, "io_frame") and hasattr(current_tab.io_frame, "files_var"):
             current_tab.io_frame.files_var.set(value="")
             self.file_details_frame.populate_file_list([])
+
+    def hide_list_window(self):
+        self.list_window.withdraw()
