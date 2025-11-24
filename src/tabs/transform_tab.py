@@ -48,12 +48,12 @@ class TransformTab(BaseTab):
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
 
-        option_row = ttk.Frame(self)
+        option_row = ttk.LabelFrame(self, text="Rescale Options", style="Bold.TLabelframe")
         option_row.pack(padx=(0, 0), pady=(8, 4), fill="x")
 
         # Row 1: Mode Selection
         # The Upscale options
-        frm_1 = ttk.LabelFrame(option_row, text="Option 1. Original", style="Bold.TLabelframe")
+        frm_1 = ttk.Frame(option_row)
         frm_1.pack(side="left", padx=8, pady=0, fill="both",expand=True)
         
         ttk.Radiobutton(
@@ -65,7 +65,7 @@ class TransformTab(BaseTab):
         ).pack(side="left", padx=(6, 8))
 
         # The Upscale options
-        frm_2 = ttk.LabelFrame(option_row, text="Option 2. Scale", style="Bold.TLabelframe")
+        frm_2 = ttk.Frame(option_row)
         frm_2.pack(side="left", padx=8, pady=0, fill="both",expand=True)
         
         ttk.Radiobutton(
@@ -80,9 +80,9 @@ class TransformTab(BaseTab):
         self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_x_factor_var,
-            bounds=(0.001, 2.0),
-            label_prefix="x",
-            width=6,
+            bounds=(0.001, 8.0),
+            label_prefix="X",
+            width=4,
         )
         self.scale_x_factor_labeled_entry.pack(side="left", padx=(6, 8))
 
@@ -90,14 +90,14 @@ class TransformTab(BaseTab):
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_y_factor_var,
-            bounds=(0.001, 2.0),
-            label_prefix="y",
-            width=6,
+            bounds=(0.001, 8.0),
+            label_prefix="Y",
+            width=4,
         )
         self.scale_y_factor_labeled_entry.pack(side="left", padx=(6, 8))
 
         # The Upscale options
-        frm_3 = ttk.LabelFrame(option_row, text="Option 3. Resize", style="Bold.TLabelframe")
+        frm_3 = ttk.Frame(option_row)
         frm_3.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
         ttk.Radiobutton(
@@ -115,7 +115,7 @@ class TransformTab(BaseTab):
         self.width_entry = LabeledValidatedEntry(
             row_2,
             var=self.width_var,
-            bounds=(1, 10000),
+            bounds=(1, 65536),
             label_prefix="W",
             width=6,
         )
@@ -125,7 +125,7 @@ class TransformTab(BaseTab):
         self.height_entry = LabeledValidatedEntry(
             row_2,
             var=self.height_var,
-            bounds=(1, 10000),
+            bounds=(1, 65536),
             label_prefix="H",
             width=6,
         )
@@ -134,11 +134,11 @@ class TransformTab(BaseTab):
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
-        parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
+        parameter_row.pack(side="left", padx=(0, 0), pady=(4, 4), fill="x")
 
         # The Parameter Settings
         upscale_frame = ttk.LabelFrame(parameter_row, text="Upscale Parameters", style="Bold.TLabelframe")
-        upscale_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
+        upscale_frame.pack(side="left", padx=(4, 2), pady=0, fill="y",expand=True)
 
         self.sharpness_var = tk.DoubleVar(value=5.0)
         self.sharpness_entry = LabeledValidatedEntry(
@@ -148,7 +148,7 @@ class TransformTab(BaseTab):
             label_prefix="Sharpness",
             width=6,
         )
-        self.sharpness_entry.pack(side="top", fill="x", padx=(2, 2))
+        self.sharpness_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
 
         self.blur_radius_var = tk.DoubleVar(value=1.0)
         self.blur_radius_entry = LabeledValidatedEntry(
@@ -156,9 +156,9 @@ class TransformTab(BaseTab):
             var=self.blur_radius_var,
             bounds=(0.0, 10.0),
             label_prefix="Blur Radius",
-            width=6,
+            width=5,
         )
-        self.blur_radius_entry.pack(side="top", fill="x", padx=(2, 2))
+        self.blur_radius_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
 
         self.median_size_var = tk.IntVar(value=3)
         self.median_size_entry = LabeledValidatedEntry(
@@ -166,32 +166,16 @@ class TransformTab(BaseTab):
             var=self.median_size_var,
             bounds=(1, 15),
             label_prefix="Median Size",
-            width=6,
+            width=4,
         )
-        self.median_size_entry.pack(side="top", fill="x", padx=(2, 8))
+        self.median_size_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
 
         flip_frame = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
         flip_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
-        '''
-        # Flip horizontally
-        self.flip_horizontal_var = tk.BooleanVar(value=False)
-        self.flip_horizontal_check = ttk.Checkbutton(
-            flip_frame,
-            text="Left-Right",
-            variable=self.flip_horizontal_var
-        )
-        '''
+
         self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
         self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(0,4))
-        '''
-        # Flip vertically
-        self.flip_vertical_var = tk.BooleanVar(value=False)
-        self.flip_vertical_check = ttk.Checkbutton(
-            flip_frame,
-            text="Top-Bottom",
-            variable=self.flip_vertical_var
-        )
-        '''
+
         self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
         
@@ -367,8 +351,10 @@ class TransformTab(BaseTab):
             self.height_entry.var.set(value=sz[1])
 
             unit = 'pt' if ext in script_formats else 'px'
-            self.width_entry.label.config(text=f"W({unit}):")
-            self.height_entry.label.config(text=f"H({unit}):")
+            self.width_entry.label.config(text=f"W ({unit})")
+            self.height_entry.label.config(text=f"H ({unit})")
+            self.scale_x_factor_labeled_entry.label.config(text=f"X ({unit})")
+            self.scale_y_factor_labeled_entry.label.config(text=f"X ({unit})")
 
             if ext == '.pdf':
                 self.flip_horizontal_check.deactivate()

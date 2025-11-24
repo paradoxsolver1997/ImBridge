@@ -38,9 +38,9 @@ class LabeledValidatedEntry(BaseFrame):
             self.value_type = str
         # Automatically generate label text
         lower, upper = bounds
-        label_text = f"{label_prefix}:"
+        label_text = f"{label_prefix}"
         self.label = ttk.Label(self, text=label_text)
-        self.label.pack(side=tk.LEFT, padx=(0, 4))
+        self.label.pack(side=tk.LEFT, padx=(0, 4), pady=(0, 4))
         # Tooltip for range
         range_tip = f"允许范围: {lower} - {upper}"
         Tooltip(self.label, range_tip)

@@ -83,12 +83,17 @@ pattern_in_byte = re.compile(
 
 def transform_image(
     in_path: str,
-    out_path: str,
+    out_dir: str,
     save_image: bool = True,
     image_preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
     **kwargs
 ) -> Optional[str]:
+
+    base_name = os.path.splitext(os.path.basename(in_path))[0]
+    in_fmt = os.path.splitext(in_path)[1].lower()
+    suffix = "resized"
+    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
     # 自动获取目标尺寸
     img = Image.open(in_path)

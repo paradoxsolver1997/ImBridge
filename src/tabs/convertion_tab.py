@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+import shutil
+import src.utils.converter as cv
+from src.utils.commons import bitmap_formats, script_formats
+
 from src.tabs.base_tab import BaseTab
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
@@ -96,3 +100,111 @@ class ConvertionTab(BaseTab):
                 dpi=self.dpi_var.get(),
             ),
         ).pack(side="right", padx=8)
+
+
+    def batch_convert(self, file_list, out_dir, out_ext, **kwargs):
+        """
+        General batch conversion template.
+        Args:
+            process_func: single file handler, signature process_func(infile, outfile, **extra_args)
+            log_prefix: log prefix (optional)
+            extra_args: extra argument dict (optional)
+        Automatically collects input files, output directory, batch processes, counts success and failure.
+        Supports analysis-type handler (no output file), in which case process_func returns None.
+        """
+        # Treat [''] (from empty entry) as no input files
+        self.logger.info(f"[New Convertion Task]: {len(file_list)} files")
+        if not file_list or (len(file_list) == 1 and file_list[0].strip() == ""):
+            self.logger.error("No input files selected")
+            return
+        self.preview_frame.clear_file_queue()
+        out_ext = out_ext.lower()
+        for f in file_list:
+            base = os.path.splitext(os.path.basename(f))[0]
+            in_ext = os.path.splitext(f)[1].lower()
+
+            # 位图 -> 位图
+            if in_ext in bitmap_formats and out_ext in bitmap_formats:
+                out_path = cv.raster_convert(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    quality=kwargs.get('quality', 95),
+                    logger=self.logger,
+                )
+            # 位图 -> 脚本(pdf/eps/ps)
+            elif in_ext in bitmap_formats and out_ext in script_formats:
+                out_path = cv.raster2script(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    dpi=kwargs.get('dpi', 300),
+                    logger=self.logger,
+                )
+            # 位图 -> svg
+            elif in_ext in bitmap_formats and out_ext == ".svg":
+                out_path = cv.raster2svg(
+                    in_path=f,
+                    out_dir=out_dir,
+                    logger=self.logger,
+                )
+            # 脚本(pdf/eps/ps) -> 位图
+            elif in_ext in script_formats and out_ext in bitmap_formats:
+                out_path = cv.script2raster(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    dpi=kwargs.get('dpi', 300),
+                    logger=self.logger,
+                )
+            # 脚本(pdf/eps/ps) -> 脚本(pdf/eps/ps)
+            elif in_ext == ".pdf" and out_ext in [".eps", ".ps"]:
+                out_path = cv.pdf2script(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    logger=self.logger,
+                )
+            elif in_ext in script_formats and out_ext in script_formats:
+
+                if in_ext == out_ext:
+                    out_path = os.path.join(out_dir, base + "_copied" + out_ext)
+                    shutil.copy2(f, out_path)
+                    self.logger.info(f"Copied {f} to {out_path}")
+                else:
+                    out_path = cv.script_convert(
+                        in_path=f,
+                        out_dir=out_dir,
+                        out_fmt=out_ext,
+                        logger=self.logger,
+                    )
+            # 脚本(pdf/eps/ps) -> svg
+            elif in_ext in script_formats and out_ext == ".svg":
+                out_path = cv.script2svg(
+                    in_path=f,
+                    out_dir=out_dir,
+                    logger=self.logger,
+                )
+            # svg -> 位图
+            elif in_ext == ".svg" and out_ext in bitmap_formats:
+                out_path = cv.svg2raster(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    logger=self.logger,
+                )
+            # svg -> 脚本(pdf/eps/ps)
+            elif in_ext == ".svg" and out_ext in script_formats:
+                out_path = cv.svg2script(
+                    in_path=f,
+                    out_dir=out_dir,
+                    out_fmt=out_ext,
+                    dpi=kwargs.get('dpi', 300),
+                    logger=self.logger,
+                )               
+            else:
+                self.logger.info(f"Unsupported conversion: {in_ext} -> {out_ext}")
+                continue
+            if out_path and os.path.exists(out_path):
+                self.preview_frame.add_file_to_queue(out_path)
+        self.logger.info("[Task Completed]")
