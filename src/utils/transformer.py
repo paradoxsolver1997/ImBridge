@@ -19,6 +19,50 @@ from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import compute_trans_matrix
 
 
+pattern_cm_sim = re.compile(
+    r"""
+    ^                                      # 行首
+    (                                     # 开始捕获组
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
+    )
+    \s+cm                                 # 空格 + cm
+    """,
+    re.VERBOSE
+)
+
+# 匹配：[a b c d e f] ...（只匹配括号内的6个数字）
+pattern_br_sim = re.compile(
+    r"""
+    ^\[\s*                               # 行首的 [ 和可能的空间
+    (                                     # 开始捕获组
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
+    )
+    \s*\]                                # 可能的空间 + ]
+    """,
+    re.VERBOSE
+)
+
+
 pattern_in_byte = re.compile(
         br"""
         ^(?!\s*/)
@@ -344,7 +388,7 @@ def transform_script(
             target_size = max(target_width, target_height)
 
             update_matrix(in_path, tmp_out_0, scale=(scale_x, scale_y))   
-            change_bbox(
+            new_bbox = change_bbox(
                     in_path=tmp_out_0, 
                     out_path=tmp_out_0, 
                     old_bbox=(0, 0, orig_width, orig_height),
@@ -391,119 +435,48 @@ def transform_script(
             out_path = shutil.move(tmp_out_0, out_path) if save_image else None
         return out_path
 
-def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
 
+def update_matrix(in_path: str, out_path: str, logger=None, **kwargs):
+    """
+    更新 EPS/PS 文件中的变换矩阵
+    """
     with open(in_path, "r", encoding="utf-8", errors="ignore") as f:
         lines = f.readlines()
 
-    # 匹配六元组（a b c d e f cm 或 [a b c d e f]） 
-    
-    pattern = re.compile(
-        r"""
-        ^(?!\s*/)
+    mat = None
 
-        (?P<prefix>.*?)
-
-        (?:
-            (?P<vals1>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+
-                    [-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s+cm
-            |
-            \[\s*(?P<vals2>[-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+\s+
-                        [-+\d.eE]+\s+[-+\d.eE]+\s+[-+\d.eE]+)\s*\]
-        )
-
-        (?P<suffix>.*)$
-        """,
-        re.VERBOSE
-    )
-
-    pattern_cm = re.compile(
-        r"""
-        ^                                      # 行首
-        (?P<vals>                            # 匹配6个数字
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字（整数或浮点数）
-            \s+                               # 空格分隔
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
-            \s+                               # 空格分隔
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
-            \s+                               # 空格分隔
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
-            \s+                               # 空格分隔
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
-            \s+                               # 空格分隔
-            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
-        )
-        \s+                                   # 空格
-        cm                                    # 字面量 "cm"
-        (?P<suffix>.*)$                       # 后面的所有内容
-        """,
-        re.VERBOSE
-    )
-
-    pattern_br = re.compile(
-    r"""
-    ^                                      # 行首
-    \[\s*                                 # 左括号，后面可能有空格
-    (?P<vals>                            # 匹配6个数字
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字
-        \s+                               # 空格分隔
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
-        \s+                               # 空格分隔
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
-        \s+                               # 空格分隔
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
-        \s+                               # 空格分隔
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
-        \s+                               # 空格分隔
-        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
-    )
-    \s*                                   # 可能有空格
-    \]                                    # 右括号
-    (?P<suffix>.*)$                       # 后面的所有内容
-    """,
-    re.VERBOSE
-)
-
-    mat_line_idx, mat = None, None
-    suffix, vals = "", ""
+    # 查找并处理匹配的行
     for i, line in enumerate(lines):
-        match = pattern_cm.match(line)
+        match = pattern_cm_sim.search(line) or pattern_br_sim.search(line)
         if match:
-            suffix = match.group("suffix")
-            # 可能是 cm 形式，也可能是 [ ] 形式
-            vals = match.group("vals")
-            if vals is not None:
-                a, b, c, d, e, f = map(float, vals.split())
-                mat = [a, b, c, d, e, f]
-                mat_line_idx = i
-                logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
-                break
+            # 提取并处理数字
+            numbers_str = match.group(1)
+            orig_mat = list(map(float, numbers_str.split()))
+            mat = compute_trans_matrix(orig_mat, **kwargs)
+            
+            # 构建新值并替换
+            new_vals_str = " ".join(f"{int(x)}" for x in mat)
+            if pattern_cm_sim.search(line):
+                new_vals_str = new_vals_str + " cm"
+                lines[i] = pattern_cm_sim.sub(new_vals_str, line)
+                format_type = "cm"
+            else:
+                new_vals_str = "[" + new_vals_str + "]"
+                lines[i] = pattern_br_sim.sub(new_vals_str, line)
+                format_type = "bracket"
+            
+            # 记录日志
+            if logger:
+                logger.info(f"[vector] Original matrix ({format_type}): {orig_mat}")
+                logger.info(f"[vector] Replaced matrix: {mat}")
+                logger.info(f"[vector] Applied transforms: {mat}")
+            break
 
-        match = pattern_br.match(line)
-        if match:
-            suffix = match.group("suffix")
-            # 可能是 cm 形式，也可能是 [ ] 形式
-            vals = match.group("vals")
-            if vals is not None:
-                a, b, c, d, e, f = map(float, vals.split())
-                mat = [a, b, c, d, e, f]
-                mat_line_idx = i
-                logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
-                break
+    # 如果没有找到匹配项
+    if mat is None and logger:
+        logger.warning("[vector] No transform matrix found in the file")
 
-    if mat is not None and mat_line_idx is not None:
-        mat = compute_trans_matrix(mat, **kwarg)            
-        if pattern_cm.match(lines[mat_line_idx]):
-            # 替换为 a b c d e f cm
-            new_line = "{} {} {} {} {} {}".format(*mat) + f"{suffix}\n"
-            lines[mat_line_idx] = new_line
-        if pattern_br.match(lines[mat_line_idx]):
-            # 替换为 [a b c d e f]
-            new_line = "[{} {} {} {} {} {}]".format(*mat) + f"{suffix}"
-            # 保留原行其他内容
-            lines[mat_line_idx] = pattern.sub(new_line, lines[mat_line_idx])
-        logger.info(f"[vector] EPS/PS transform matrix replaced: {mat}") if logger else None
-        logger.info("[vector] Applied transforms: " + f"{mat}") if logger else None
+    # 写入文件
     with open(out_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
@@ -538,12 +511,13 @@ def change_bbox(
         br"(?!\d)"           # 右边不是数字
     )
 
-    pattern_wh_float = re.compile(
-        br"(?<![\d.])"          # 左边不是数字或小数点
-        br"([-+]?\d+(?:\.\d+)?)" # W: 整数或带小数
-        br"\s+"                 # 空格
-        br"([-+]?\d+(?:\.\d+)?)" # H: 整数或带小数
-        br"(?![\d.])"           # 右边不是数字或小数点
+    pattern_wh_cairo = re.compile(
+        br"(?<!\d)"          # 左边不是数字
+        br"(-?\d+)"          # W (捕获组1)
+        br"\s+"              # 间隔
+        br"(-?\d+)"          # H (捕获组2)
+        br"\s*"              # 可选空格
+        br"(cairo.*)"        # cairo及后面的所有内容 (捕获组3)
     )
 
     # 匹配 %%BoundingBox
@@ -564,9 +538,13 @@ def change_bbox(
         
         # 判断是否在容差内
         if abs(orig_w - old_w) <= tolerate and abs(orig_h - old_h) <= tolerate:
-            return b"%d %d" % (new_w, new_h)
+            return b"%d %d" % (int(new_w), int(new_h))
         else:
             return m.group(0)
+        
+    def repl_wh_cairo(m):        
+        suffix = m.group(3)
+        return b"%d %d " % (int(new_w), int(new_h)) + suffix
 
 
     def repl_bbox(m):
@@ -580,7 +558,7 @@ def change_bbox(
     # ----------------- 执行替换 -----------------
     content, n_bbox = pattern_bbox.subn(repl_bbox, content)
     content, n_hires = pattern_hires.subn(repl_hires, content)
-    # content, n_wh = pattern_wh_float.subn(repl_wh, content)
+    content, n_wh = pattern_wh_cairo.subn(repl_wh_cairo, content)
     lines = content.split(b"\n")
     new_lines = []
 
@@ -589,7 +567,7 @@ def change_bbox(
         if pattern_in_byte.match(line):
             new_lines.append(line)
             continue
-
+        
         # 对其他行做 W H 匹配替换
         new_line, n_wh = pattern_wh_int.subn(repl_wh, line)
         new_lines.append(new_line)
@@ -607,4 +585,4 @@ def change_bbox(
             f"(WH pairs: {n_wh}, BoundingBox lines: {n_bbox}, HiRes lines: {n_hires})"
         )
 
-    return (new_w, new_h)
+    return new_bbox
