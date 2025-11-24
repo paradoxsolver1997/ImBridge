@@ -15,7 +15,7 @@ class CropTab(BaseTab):
         super().__init__(parent, title=title)
 
         self._preview_imgtk = None
-        self.output_dir = os.path.join(self.output_dir, "transform_output")
+        self.output_dir = os.path.join(self.output_dir, "crop_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
 

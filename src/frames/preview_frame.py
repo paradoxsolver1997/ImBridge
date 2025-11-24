@@ -123,12 +123,17 @@ class PreviewFrame(BaseFrame):
             ext = os.path.splitext(img_path)[1].lower()
             if ext in script_formats:
                 img = cv.show_script(img_path, dpi=self.dpi)
-                img = process_callback(img) if process_callback else img
+                img = process_callback(img.copy()) if process_callback else img
                 sz = get_script_size(img_path)
                 self.show_image(img, img_size=sz, unit='pt')
             elif ext == ".svg":
+                print("XXXXXXXXXXXXXXXXXXXXX")
                 img = cv.show_svg(img_path)
+                print("YYYYYYYYYYYYYYYYYYY")
+                if process_callback:
+                    print("ZZZZZZZZZZZZZZZZZZZZZ")
                 img = process_callback(img) if process_callback else img
+                print("DDDDDDDDDDDDDD")
                 sz = get_svg_size(img_path)
                 self.show_image(img, img_size=sz, unit='px')
             elif ext in bitmap_formats:

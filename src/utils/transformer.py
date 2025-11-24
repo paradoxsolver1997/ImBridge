@@ -14,7 +14,6 @@ from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_single_page
 from src.utils.commons import confirm_dir_existence
 from src.utils.commons import confirm_overwrite
-from src.utils.commons import confirm_cropbox
 from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import compute_trans_matrix
 

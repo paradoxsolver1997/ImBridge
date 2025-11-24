@@ -28,26 +28,27 @@ def crop_image(
     logger: Optional[Logger] = None
 ) -> Optional[str]:
 
-    base_name = os.path.splitext(os.path.basename(in_path))[0]
-    in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "cropped"
-    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+    if save_image:
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        suffix = "cropped"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
-    # 自动获取目标尺寸
-    img = Image.open(in_path)
-    if confirm_cropbox(crop_box, (img.width, img.height)):
-        logger.info(f"[crop] crop box: {crop_box}") if logger else None
-        img = img.crop(crop_box)
-    if save_image:
-        img.save(out_path)
-    else:
-        out_path = None
-    msg = f"[crop] saved to: {out_path}" if save_image else "[crop] image cropped without saving"
-    logger.info(msg) if logger else None
-    if save_image:
+        # 自动获取目标尺寸
+        img = Image.open(in_path)
+        if confirm_cropbox(crop_box, (img.width, img.height)):
+            logger.info(f"[crop] crop box: {crop_box}") if logger else None
+            img = img.crop(crop_box)
+            img.save(out_path)
+        else:
+            out_path = None
+        msg = f"[crop] saved to: {out_path}"
         image_preview_callback(img) if image_preview_callback else None
     else:
         image_preview_callback(display_crop(Image.open(in_path), crop_box)) if image_preview_callback else None
+        msg = f"[crop] see preview frame for cropping effect"
+        out_path = None
+    logger.info(msg) if logger else None
     return out_path
 
 
@@ -60,42 +61,44 @@ def crop_svg(
     logger: Optional[Logger] = None
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
 
-    base_name = os.path.splitext(os.path.basename(in_path))[0]
-    in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "cropped"
-    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+    def show_crop(img):
+        return display_crop(img, crop_box=crop_box)
 
-    orig_width, orig_height = get_svg_size(in_path)    
-    try:
-        tree = ET.parse(in_path)
-        root = tree.getroot()
-        if confirm_cropbox(crop_box, (orig_width, orig_height)):
-            # crop_box: (left, top, right, bottom)
-            x = crop_box[0]
-            y = crop_box[1]
-            w = crop_box[2] - crop_box[0]
-            h = crop_box[3] - crop_box[1]
-            logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
-            root.set("viewBox", f"{x} {y} {w} {h}")
-            root.set("width", str(w))
-            root.set("height", str(h))
-        else:
-            root.set("viewBox", f"0 0 {orig_width} {orig_height}")
-        
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = os.path.join(tmp_dir, "temp.svg")
-            tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
-            file_preview_callback(
-                tmp_path, 
-                lambda: display_crop(crop_box=crop_box)
-            ) if file_preview_callback else None
-            out_path = shutil.move(tmp_path, out_path) if save_image else None
-            msg = f"[vector] SVG saved to {out_path}" if save_image else "[vector] SVG resized without saving"
-            logger.info(msg) if logger else None
-        return out_path
-    except Exception as e:
-        raise RuntimeError(f"SVG crop/resize failed: {e}")
+    if save_image:
 
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        suffix = "cropped"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+
+        orig_width, orig_height = get_svg_size(in_path)    
+        try:
+            tree = ET.parse(in_path)
+            root = tree.getroot()
+            if confirm_cropbox(crop_box, (orig_width, orig_height)):
+                # crop_box: (left, top, right, bottom)
+                x = crop_box[0]
+                y = crop_box[1]
+                w = crop_box[2] - crop_box[0]
+                h = crop_box[3] - crop_box[1]
+                logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
+                root.set("viewBox", f"{x} {y} {w} {h}")
+                root.set("width", str(w))
+                root.set("height", str(h))
+            else:
+                root.set("viewBox", f"0 0 {orig_width} {orig_height}")
+            
+            tree.write(out_path, encoding="utf-8", xml_declaration=True)
+            file_preview_callback(out_path) if file_preview_callback else None
+            msg = f"[vector] SVG saved to {out_path}"
+        except Exception as e:
+            raise RuntimeError(f"SVG crop/resize failed: {e}")
+    else:
+        out_path = None
+        file_preview_callback(in_path, show_crop) if file_preview_callback else None
+        msg = f"[crop] see preview frame for cropping effect"
+    logger.info(msg) if logger else None
+    return out_path
 
 def crop_pdf(
     in_path: str,
@@ -106,19 +109,18 @@ def crop_pdf(
     logger: Optional[Logger] = None
 ) -> Optional[str]:
     
-    base_name = os.path.splitext(os.path.basename(in_path))[0]
-    in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "cropped"
-    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+    def show_crop(img):
+        return display_crop(img, crop_box=crop_box)
 
-    if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+    if save_image:
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        suffix = "cropped"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
-        # 用PyMuPDF整体缩放纯矢量PDF内容
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            # 1. 先用 wash_eps_ps 清洗，输出到 out_path
-            tmp_out = cv.script_convert(in_path, tmp_dir)
+        if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
             try:
-                with fitz.open(tmp_out) as doc:
+                with fitz.open(in_path) as doc:
                     with fitz.open() as new_doc:
                         for page in doc:
                             rect = page.rect
@@ -143,20 +145,17 @@ def crop_pdf(
                                 logger.info(f"[vector] Set cropbox to {crop_box}") if logger else None
                             else:
                                 page.set_cropbox(fitz.Rect(0, 0, orig_width, orig_height))
-                            
-                        tmp_path = os.path.join(tmp_dir, "temp.pdf")
-                        new_doc.save(tmp_path)
-                file_preview_callback(
-                    tmp_path,
-                    lambda: display_crop(crop_box=crop_box)
-                ) if file_preview_callback else None
-                out_path = shutil.move(tmp_path, out_path) if save_image else None
-                msg = f"[vector] PDF saved to {out_path}" if save_image else "[vector] PDF resized without saving"
-                logger.info(msg) if logger else None
-                return out_path
+                        new_doc.save(out_path)
+                file_preview_callback(out_path) if file_preview_callback else None
+                msg = f"[vector] PDF saved to {out_path}"
             except Exception as e:
                 raise RuntimeError(f"PDF crop/resize failed: {e}")
-
+    else:
+        out_path = None
+        file_preview_callback(in_path, show_crop) if file_preview_callback else None
+        msg = f"[crop] see preview frame for cropping effect"
+    logger.info(msg) if logger else None
+    return out_path
 
 def crop_script(
     in_path: str,
@@ -175,38 +174,41 @@ def crop_script(
       只支持裁剪，不支持缩放
     """
 
-    base_name = os.path.splitext(os.path.basename(in_path))[0]
-    in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = "cropped"
-    out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+    def show_crop(img):
+        return display_crop(img, crop_box=crop_box)
     
-    if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-        orig_width, orig_height = get_script_size(in_path)
+    if save_image:
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-
-            tmp_path = os.path.join(tmp_dir, "temp.eps")
-            
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        suffix = "cropped"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
+        
+        if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+            orig_width, orig_height = get_script_size(in_path)
             if confirm_cropbox(crop_box, (orig_width, orig_height)):
                 change_bbox(
                     in_path=in_path, 
-                    out_path=tmp_path,
+                    out_path=out_path,
                     old_bbox=(0, 0, orig_width, orig_height),
                     new_bbox=crop_box, 
                     logger=logger
                 )
                 update_matrix(
-                    tmp_path, 
-                    tmp_path, 
+                    out_path, 
+                    out_path, 
                     translate=[crop_box[0], crop_box[1]]
                 )
             
-            file_preview_callback(
-                    tmp_path,
-                    lambda: display_crop(crop_box=crop_box)
-                ) if file_preview_callback else None
-            out_path = shutil.move(tmp_path, out_path) if save_image else None
-        return out_path
+            file_preview_callback(out_path) if file_preview_callback else None
+            msg = f"[vector] EPS saved to {out_path}"
+    else:
+        out_path = None
+        file_preview_callback(in_path, show_crop) if file_preview_callback else None     
+        msg = f"[crop] see preview frame for cropping effect"
+    logger.info(msg) if logger else None
+    return out_path
+
 
 def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
 
