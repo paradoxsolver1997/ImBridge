@@ -60,7 +60,7 @@ class TransformTab(BaseTab):
         
         ttk.Radiobutton(
             frm_1, 
-            text='Original Size', 
+            text='Original', 
             variable=self.mode_var, 
             value=1, 
             command=self.update_mode
@@ -86,7 +86,7 @@ class TransformTab(BaseTab):
             label_text="X",
             width=4,
         )
-        self.scale_x_factor_labeled_entry.pack(side="left", padx=(6, 8))
+        self.scale_x_factor_labeled_entry.pack(side="left", padx=(4, 4))
 
         self.scale_y_factor_var = tk.DoubleVar(value=1.0)
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
@@ -96,19 +96,20 @@ class TransformTab(BaseTab):
             label_text="Y",
             width=4,
         )
-        self.scale_y_factor_labeled_entry.pack(side="left", padx=(6, 8))
+        self.scale_y_factor_labeled_entry.pack(side="left", padx=(4, 4))
 
         # The Upscale options
         frm_3 = ttk.Frame(option_row)
         frm_3.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
-        ttk.Radiobutton(
+        self.resize_radio = ttk.Radiobutton(
             frm_3, 
-            text='Resize', 
+            text='Resize (px)', 
             variable=self.mode_var, 
             value=3, 
             command=self.update_mode
-        ).pack(side="left", padx=(6, 8))
+        )
+        self.resize_radio.pack(side="left", padx=(4, 4))
 
         row_2 = ttk.Frame(frm_3)
         row_2.pack(padx=(0, 0), pady=(4, 4), fill="x")
@@ -150,7 +151,7 @@ class TransformTab(BaseTab):
             label_text="Sharpness",
             width=6,
         )
-        self.sharpness_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
+        self.sharpness_entry.pack(side="top", fill="x", padx=(8, 4), pady=(2, 1))
 
         self.blur_radius_var = tk.DoubleVar(value=1.0)
         self.blur_radius_entry = LabeledValidatedEntry(
@@ -160,7 +161,7 @@ class TransformTab(BaseTab):
             label_text="Blur Radius",
             width=5,
         )
-        self.blur_radius_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
+        self.blur_radius_entry.pack(side="top", fill="x", padx=(8, 4), pady=1)
 
         self.median_size_var = tk.IntVar(value=3)
         self.median_size_entry = LabeledValidatedEntry(
@@ -170,16 +171,16 @@ class TransformTab(BaseTab):
             label_text="Median Size",
             width=4,
         )
-        self.median_size_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
+        self.median_size_entry.pack(side="top", fill="x", padx=(8, 4), pady=1)
 
         flip_frame = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
         flip_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
 
         self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
-        self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(0,4))
+        self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(2,2))
 
         self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
-        self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
+        self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,2))
         
 
         rotate_frame = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
@@ -203,10 +204,10 @@ class TransformTab(BaseTab):
 
         # --- Preview 按钮 ---
         preview_btn_row = ttk.Frame(control_frame)
-        preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
+        preview_btn_row.pack(fill="x", padx=8, pady=(6, 6), anchor="e")
         ttk.Button(
             preview_btn_row,
-            text="Preview",
+            text="Confirm",
             command=lambda: self.on_resize(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
@@ -353,10 +354,7 @@ class TransformTab(BaseTab):
             self.height_entry.var.set(value=sz[1])
 
             unit = 'pt' if ext in script_formats else 'px'
-            self.width_entry.label.config(text=f"W ({unit})")
-            self.height_entry.label.config(text=f"H ({unit})")
-            self.scale_x_factor_labeled_entry.label.config(text=f"X ({unit})")
-            self.scale_y_factor_labeled_entry.label.config(text=f"Y ({unit})")
+            self.resize_radio.config(text=f'Resize ({unit})')
 
             if ext == '.pdf':
                 self.flip_horizontal_check.deactivate()

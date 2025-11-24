@@ -54,14 +54,10 @@ class CropTab(BaseTab):
         parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
         frm_5 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_5.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
-        # --- Crop 选项 ---
-        crop_row = ttk.Frame(frm_5)
-        crop_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+        frm_5.pack(side="left", padx=8, pady=8, fill="x", expand=True)
 
         cord_row = ttk.Frame(frm_5)
-        cord_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
+        cord_row.pack(side="left", fill="x", padx=(6, 8), pady=(4, 8), expand=True)
 
         self.crop_x_var = tk.IntVar(value=0)
         self.crop_x_entry = LabeledValidatedEntry(
@@ -85,12 +81,9 @@ class CropTab(BaseTab):
         self.crop_y_entry.pack(side="left", padx=(2, 2))
         self.crop_y_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
-        size_row = ttk.Frame(frm_5)
-        size_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
-
         self.crop_w_var = tk.IntVar(value=1)
         self.crop_w_entry = LabeledValidatedEntry(
-            size_row,
+            cord_row,
             var=self.crop_w_var,
             bounds=(1, 65536),
             label_text="W",
@@ -101,7 +94,7 @@ class CropTab(BaseTab):
 
         self.crop_h_var = tk.IntVar(value=1)
         self.crop_h_entry = LabeledValidatedEntry(
-            size_row,
+            cord_row,
             var=self.crop_h_var,
             bounds=(1, 65536),
             label_text="H",
@@ -110,25 +103,26 @@ class CropTab(BaseTab):
         self.crop_h_entry.pack(side="left", padx=(2, 2))
         self.crop_h_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
-        frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
-        # --- Preview 按钮 ---
-        preview_btn_row = ttk.Frame(frm_7)
-        preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
-            preview_btn_row,
-            text="Preview",
-            command=lambda: self.on_crop(save_flag=False)
-        ).pack(side="right", padx=(2, 8))
+            cord_row,
+            text="Confirm",
+            command=lambda e: self.on_crop(save_flag=False)
+        ).pack(side="left", padx=(2, 8))
 
-        save_btn_row = ttk.Frame(frm_7)
-        save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
+        #save_btn_row = ttk.Frame(cord_row)
+        #save_btn_row.pack(fill="x", padx=8, pady=(8, 12))
         ttk.Button(
-            save_btn_row,
+            cord_row,
             text="Save",
             command=lambda: self.on_crop(save_flag=True)
-        ).pack(side="left", padx=8)
+        ).pack(side="right", fill='x', padx=8)
+
+        
+
+        #frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        #frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+
+        
 
 
     def on_crop(self, save_flag=False):

@@ -38,7 +38,7 @@ class App(tk.Tk):
 
         init_styles()
         self.title("ImBridge")
-        self.geometry("720x600")
+        self.geometry("600x600")
         tkfont.nametofont("TkDefaultFont").config(family="Segoe UI", size=10)
         # Logging system
         self.logger = Logger(gui_widget=None)  # Not bound yet, will bind log_text later

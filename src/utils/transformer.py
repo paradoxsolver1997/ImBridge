@@ -109,18 +109,7 @@ def transform_image(
         new_width = img.width
         new_height = img.height
 
-    img = resize_raster(img, (new_width, new_height), logger=logger, **kwargs)
-    
-    if 'rotate_angle' in kwargs:
-        angle = kwargs.get('rotate_angle')
-        logger.info(f"[crop] rotate image by {angle} degrees") if logger else None
-        img = img.rotate(angle, expand=True)
-
-    if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
-        flip = kwargs.get('flip')
-        direction = Image.FLIP_LEFT_RIGHT if flip == 'LR' else Image.FLIP_TOP_BOTTOM
-        img = img.transpose(direction)
-        logger.info(f"[crop] flip image {flip}") if logger else None
+    img = transform_raster(img, (new_width, new_height), logger=logger, **kwargs)
     
     if save_image:
         img.save(out_path)
@@ -132,7 +121,7 @@ def transform_image(
     return out_path
 
 
-def resize_raster(
+def transform_raster(
     img: Image.Image,
     new_size: Tuple[int, int],
     logger: Optional[Logger] = None,
@@ -167,6 +156,18 @@ def resize_raster(
             img_2 = img_2.convert("RGBA")
             img_2.putalpha(alpha)
         logger.info("Upscale finished.") if logger else None
+
+    if 'rotate_angle' in kwargs:
+        angle = kwargs.get('rotate_angle')
+        logger.info(f"[crop] rotate image by {angle} degrees") if logger else None
+        img_2 = img_2.rotate(angle, expand=True)
+
+    if 'flip' in kwargs and kwargs['flip'] in ['LR', 'TB']:
+        flip = kwargs.get('flip')
+        direction = Image.FLIP_LEFT_RIGHT if flip == 'LR' else Image.FLIP_TOP_BOTTOM
+        img_2 = img_2.transpose(direction)
+        logger.info(f"[crop] flip image {flip}") if logger else None
+
     return img_2
 
 
