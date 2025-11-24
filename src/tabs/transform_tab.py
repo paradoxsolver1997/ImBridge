@@ -6,7 +6,9 @@ import src.utils.transformer as sc
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
-from src.utils.commons import bitmap_formats
+from src.frames.check_frame import CheckFrame
+from src.utils.commons import bitmap_formats, vector_formats, script_formats
+from src.utils.commons import get_script_size, get_svg_size, get_raster_size
 
 
 class TransformTab(BaseTab):
@@ -43,16 +45,16 @@ class TransformTab(BaseTab):
         }
 
         self.io_frame = InputOutputFrame(self, **parameters)
-        self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
+        self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
 
         option_row = ttk.Frame(self)
-        option_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
+        option_row.pack(padx=(0, 0), pady=(8, 4), fill="x")
 
         # Row 1: Mode Selection
         # The Upscale options
         frm_1 = ttk.LabelFrame(option_row, text="Option 1. Original", style="Bold.TLabelframe")
-        frm_1.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+        frm_1.pack(side="left", padx=8, pady=0, fill="both",expand=True)
         
         ttk.Radiobutton(
             frm_1, 
@@ -64,7 +66,7 @@ class TransformTab(BaseTab):
 
         # The Upscale options
         frm_2 = ttk.LabelFrame(option_row, text="Option 2. Scale", style="Bold.TLabelframe")
-        frm_2.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+        frm_2.pack(side="left", padx=8, pady=0, fill="both",expand=True)
         
         ttk.Radiobutton(
             frm_2, 
@@ -96,7 +98,7 @@ class TransformTab(BaseTab):
 
         # The Upscale options
         frm_3 = ttk.LabelFrame(option_row, text="Option 3. Resize", style="Bold.TLabelframe")
-        frm_3.pack(side="left", padx=8, pady=8, fill="both",expand=True)
+        frm_3.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
         ttk.Radiobutton(
             frm_3, 
@@ -135,12 +137,12 @@ class TransformTab(BaseTab):
         parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
         # The Parameter Settings
-        frm_4 = ttk.LabelFrame(parameter_row, text="Upscale Parameters", style="Bold.TLabelframe")
-        frm_4.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+        upscale_frame = ttk.LabelFrame(parameter_row, text="Upscale Parameters", style="Bold.TLabelframe")
+        upscale_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
 
         self.sharpness_var = tk.DoubleVar(value=5.0)
         self.sharpness_entry = LabeledValidatedEntry(
-            frm_4,
+            upscale_frame,
             var=self.sharpness_var,
             bounds=(0.0, 10.0),
             label_prefix="Sharpness",
@@ -150,7 +152,7 @@ class TransformTab(BaseTab):
 
         self.blur_radius_var = tk.DoubleVar(value=1.0)
         self.blur_radius_entry = LabeledValidatedEntry(
-            frm_4,
+            upscale_frame,
             var=self.blur_radius_var,
             bounds=(0.0, 10.0),
             label_prefix="Blur Radius",
@@ -160,7 +162,7 @@ class TransformTab(BaseTab):
 
         self.median_size_var = tk.IntVar(value=3)
         self.median_size_entry = LabeledValidatedEntry(
-            frm_4,
+            upscale_frame,
             var=self.median_size_var,
             bounds=(1, 15),
             label_prefix="Median Size",
@@ -168,36 +170,40 @@ class TransformTab(BaseTab):
         )
         self.median_size_entry.pack(side="top", fill="x", padx=(2, 8))
 
-        frm_6 = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
-        frm_6.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
+        flip_frame = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
+        flip_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
+        '''
         # Flip horizontally
         self.flip_horizontal_var = tk.BooleanVar(value=False)
         self.flip_horizontal_check = ttk.Checkbutton(
-            frm_6,
-            text="Flip Left-Right",
+            flip_frame,
+            text="Left-Right",
             variable=self.flip_horizontal_var
         )
-        self.flip_horizontal_check.pack(side="top", anchor="w", padx=6, pady=(0,4))
-
+        '''
+        self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
+        self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(0,4))
+        '''
         # Flip vertically
         self.flip_vertical_var = tk.BooleanVar(value=False)
         self.flip_vertical_check = ttk.Checkbutton(
-            frm_6,
-            text="Flip Top-Bottom",
+            flip_frame,
+            text="Top-Bottom",
             variable=self.flip_vertical_var
         )
+        '''
+        self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,8))
+        
 
-
-        frm_7 = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
-        frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+        rotate_frame = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
+        rotate_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
 
         # 旋转角度下拉菜单
         self.rotate_angle_var = tk.IntVar(value=0)
-        ttk.Label(frm_7, text="Angle (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
+        ttk.Label(rotate_frame, text="Angle (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
         self.rotate_angle_combo = ttk.Combobox(
-            frm_7,
+            rotate_frame,
             textvariable=self.rotate_angle_var,
             values=[0, 90, 180, 270],
             state="readonly",
@@ -206,11 +212,11 @@ class TransformTab(BaseTab):
         self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
 
 
-        frm_8 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        frm_8.pack(side="left", padx=8, pady=8, fill="y",expand=True)
+        control_frame = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        control_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
 
         # --- Preview 按钮 ---
-        preview_btn_row = ttk.Frame(frm_8)
+        preview_btn_row = ttk.Frame(control_frame)
         preview_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             preview_btn_row,
@@ -218,7 +224,7 @@ class TransformTab(BaseTab):
             command=lambda: self.on_resize(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
-        save_btn_row = ttk.Frame(frm_8)
+        save_btn_row = ttk.Frame(control_frame)
         save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
         ttk.Button(
             save_btn_row,
@@ -277,7 +283,7 @@ class TransformTab(BaseTab):
                 "rotate_angle": self.rotate_angle_var.get(),
             })
 
-        if self.flip_horizontal_var.get():
+        if self.flip_horizontal_check.var.get():
             params.update({
                 "flip_lr": True,
             })
@@ -286,7 +292,7 @@ class TransformTab(BaseTab):
                 "flip_lr": False,
             })
 
-        if self.flip_vertical_var.get():
+        if self.flip_vertical_check.var.get():
             params.update({
                 "flip_tb": True,
             })
@@ -304,7 +310,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
+                image_preview_callback=self.preview_frame.show_image, 
                 logger=self.logger, 
                 **params)
         elif ext == '.svg':
@@ -312,7 +318,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
+                file_preview_callback=self.preview_frame.show_file, 
                 logger=self.logger, 
                 **params)
         elif ext == '.pdf':
@@ -321,7 +327,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
+                file_preview_callback=self.preview_frame.show_file, 
                 logger=self.logger, 
                 **params)
         elif ext in ['.eps', '.ps']:
@@ -330,31 +336,44 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                project_callback=self.preview_frame.show_image, 
+                file_preview_callback=self.preview_frame.show_file, 
                 logger=self.logger, 
                 **params)
         else:
             self.logger.error("Unsupported file format for resizing.")
         return
 
-        
 
     def on_files_var_changed(self, *args):
-        files = self.io_frame.files_var.get().strip().split("\n")
-        files = [f for f in files if f.strip()]
-        vector_exts = ('.svg', '.pdf', '.eps', '.ps')
-        is_vector = False
-        if files:
-            # 只要有一个是矢量图就算矢量
-            for f in files:
-                if f.lower().endswith(vector_exts):
-                    is_vector = True
-                    break
-        if is_vector:
-            self.sharpness_entry.deactivate()
-            self.blur_radius_entry.deactivate()
-            self.median_size_entry.deactivate()
-        else:
-            self.sharpness_entry.activate()
-            self.blur_radius_entry.activate()
-            self.median_size_entry.activate()
+        file = self.io_frame.files_var.get().strip().split("\n")[0]
+        if file:
+            ext = os.path.splitext(file)[1].lower()
+            if ext in vector_formats:
+                self.sharpness_entry.deactivate()
+                self.blur_radius_entry.deactivate()
+                self.median_size_entry.deactivate()
+            else:
+                self.sharpness_entry.activate()
+                self.blur_radius_entry.activate()
+                self.median_size_entry.activate()
+
+            if ext == '.svg':
+                sz = get_svg_size(file)
+            elif ext in script_formats:
+                sz = get_script_size(file)
+            else:
+                sz = get_raster_size(file)
+            self.width_entry.var.set(value=sz[0])
+            self.height_entry.var.set(value=sz[1])
+
+            unit = 'pt' if ext in script_formats else 'px'
+            self.width_entry.label.config(text=f"W({unit}):")
+            self.height_entry.label.config(text=f"H({unit}):")
+
+            if ext == '.pdf':
+                self.flip_horizontal_check.deactivate()
+                self.flip_vertical_check.deactivate()
+            else:
+                self.flip_horizontal_check.activate()
+                self.flip_vertical_check.activate()
+            

@@ -294,19 +294,26 @@ def script_convert(in_path: str, out_dir: str, out_fmt: str = None, logger: Opti
         
 
 def show_script(in_path: str, dpi: int = 96) -> Image.Image:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        out_path = script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
-        img = Image.open(out_path)
-        img.load()  # 强制读取到内存
-    return img
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            print(os.path.exists(in_path))
+            out_path = script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
+            img = Image.open(out_path)
+            img.load()  # 强制读取到内存
+        return img
+    except Exception as ve:
+        raise ve
 
 
 def show_svg(in_path: str) -> Image.Image:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        out_path = svg2raster(in_path, tmp_dir, out_fmt=".png")
-        img = Image.open(out_path)
-        img.load()  # 强制读取到内存
-    return img
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_path = svg2raster(in_path, tmp_dir, out_fmt=".png")
+            img = Image.open(out_path)
+            img.load()  # 强制读取到内存
+        return img
+    except Exception as ve:
+        raise ve
 
 
 def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:

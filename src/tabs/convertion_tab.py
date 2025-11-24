@@ -31,22 +31,22 @@ class ConvertionTab(BaseTab):
                 ("Vectors", "*.svg;*.pdf;*.eps;*.ps"),
             ]
         parameters = {
-            "input_label": "Input Files",
+            "input_label": "Input Images",
             "input_filetypes": input_filetypes,
             "multiple_input_files": True,
             "output_label": "Output Folder",
             "default_output_dir": self.output_dir,
         }
-        self.io_frame = InputOutputFrame(self, **parameters)
+        self.io_frame = InputOutputFrame(self, title="Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 
 
         # Bitmap format selection
-        frm_3 = ttk.LabelFrame(
+        convert_frame = ttk.LabelFrame(
             self, text="Convertion", style="Bold.TLabelframe"
         )
-        frm_3.pack(padx=(6, 8), pady=(8, 4), fill="x")
-        bitmap_fmt_row = ttk.Frame(frm_3)
+        convert_frame.pack(padx=(6, 8), pady=(8, 4), fill="x")
+        bitmap_fmt_row = ttk.Frame(convert_frame)
         bitmap_fmt_row.pack(fill="x", padx=0, pady=4)
         self.out_fmt = tk.StringVar(value=".png")
 

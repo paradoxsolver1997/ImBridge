@@ -15,7 +15,7 @@ from src.utils.commons import confirm_single_page
 from src.utils.commons import confirm_dir_existence
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_cropbox
-from src.utils.commons import get_script_size
+from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import compute_trans_matrix
 
 
@@ -139,14 +139,7 @@ def transform_svg(
     suffix = "resized"
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
-    try:
-        tree = ET.parse(in_path)
-        root = tree.getroot()
-        orig_width = int(float(root.get("width")))
-        orig_height = int(float(root.get("height")))
-    except Exception:
-        raise RuntimeError("Failed to parse SVG dimensions.")
-    
+    orig_width, orig_height = get_svg_size(in_path)
     mat = compute_trans_matrix()
 
     if 'new_width' in kwargs and 'new_height' in kwargs:
@@ -164,49 +157,58 @@ def transform_svg(
         scale_y = 1.0
         target_width = orig_width
         target_height = orig_height
-    tmp_out_0 = os.path.join(tmp_dir, "temp.svg")
-    update_matrix(tmp_out_0, tmp_out_0, scale=(scale_x, scale_y))
-    root.set("viewBox", f"0 0 {target_width} {target_height}")
-    root.set("width", str(target_width))
-    root.set("height", str(target_height))
 
-    if 'flip_lr' in kwargs and kwargs['flip_lr']:
-        update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_width, 0])
-    if 'flip_tb' in kwargs and kwargs['flip_tb']:
-        update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_height])
+    with tempfile.TemporaryDirectory() as tmp_dir:
 
-    if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-        angle = kwargs['rotate_angle'] % 360
-        # 如果旋转90或270度，需要交换width和height
-        if angle in [90, 270]:
-            temp_value = target_width
-            target_width = target_height
-            target_height = temp_value
-            root.set("viewBox", f"0 0 {target_width} {target_height}")
-            root.set("width", str(target_width))
-            root.set("height", str(target_height))
-        angle_map = {
-            0: [0, 0],
-            90: [0, target_height],
-            180: [target_width, target_height],
-            270: [target_width, 0],
-        }
-        mat = compute_trans_matrix(
-            mat, 
-            rotate_angle=angle, 
-            translate=angle_map.get(angle, [0, 0])
-        )
-        logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
+        mat = compute_trans_matrix(mat, scale=(scale_x, scale_y))
 
-    try:
-        g = ET.Element("g")
-        for child in list(root):
-            g.append(child)
-            root.remove(child)
-        g.set("transform", " ".join([mat2str(mat)]))
-        root.append(g)
-    except Exception as e:
-        raise RuntimeError(f"SVG transform failed: {e}")
+        try:
+            tree = ET.parse(in_path)
+            root = tree.getroot()
+        except Exception:
+            raise RuntimeError("Failed to parse SVG dimensions.")
+        
+        root.set("viewBox", f"0 0 {target_width} {target_height}")
+        root.set("width", str(target_width))
+        root.set("height", str(target_height))
+
+        if 'flip_lr' in kwargs and kwargs['flip_lr']:
+            mat = compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
+        if 'flip_tb' in kwargs and kwargs['flip_tb']:
+            mat = compute_trans_matrix(mat, flip_tb=True, translate=[0, target_height])
+
+        if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+            angle = kwargs['rotate_angle'] % 360
+            # 如果旋转90或270度，需要交换width和height
+            if angle in [90, 270]:
+                temp_value = target_width
+                target_width = target_height
+                target_height = temp_value
+                root.set("viewBox", f"0 0 {target_width} {target_height}")
+                root.set("width", str(target_width))
+                root.set("height", str(target_height))
+            angle_map = {
+                0: [0, 0],
+                90: [0, target_height],
+                180: [target_width, target_height],
+                270: [target_width, 0],
+            }
+            mat = compute_trans_matrix(
+                mat, 
+                rotate_angle=angle, 
+                translate=angle_map.get(angle, [0, 0])
+            )
+            logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
+
+        try:
+            g = ET.Element("g")
+            for child in list(root):
+                g.append(child)
+                root.remove(child)
+            g.set("transform", " ".join([mat2str(mat)]))
+            root.append(g)
+        except Exception as e:
+            raise RuntimeError(f"SVG transform failed: {e}")
 
     try:       
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -351,10 +353,10 @@ def transform_script(
                 )
 
             if 'flip_lr' in kwargs and kwargs['flip_lr']:
-                update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_size, 0])
+                update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_width, 0])
 
             if 'flip_tb' in kwargs and kwargs['flip_tb']: 
-                update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_size])           
+                update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_height])           
 
             if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
                 angle = kwargs.get('rotate_angle') % 360
@@ -376,7 +378,7 @@ def transform_script(
                     translate=angle_map.get(angle, [0, 0])
                 )
                 logger.info(f"[vector] Rotating EPS by {angle} degrees") if logger else None
-            
+
             change_bbox(
                 in_path=tmp_out_0, 
                 out_path=tmp_out_0, 
@@ -415,31 +417,89 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
         re.VERBOSE
     )
 
+    pattern_cm = re.compile(
+        r"""
+        ^                                      # 行首
+        (?P<vals>                            # 匹配6个数字
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字（整数或浮点数）
+            \s+                               # 空格分隔
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
+            \s+                               # 空格分隔
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
+            \s+                               # 空格分隔
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
+            \s+                               # 空格分隔
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
+            \s+                               # 空格分隔
+            [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
+        )
+        \s+                                   # 空格
+        cm                                    # 字面量 "cm"
+        (?P<suffix>.*)$                       # 后面的所有内容
+        """,
+        re.VERBOSE
+    )
+
+    pattern_br = re.compile(
+    r"""
+    ^                                      # 行首
+    \[\s*                                 # 左括号，后面可能有空格
+    (?P<vals>                            # 匹配6个数字
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第一个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第二个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第三个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第四个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第五个数字
+        \s+                               # 空格分隔
+        [-+]?\d*\.?\d+([eE][-+]?\d+)?     # 第六个数字
+    )
+    \s*                                   # 可能有空格
+    \]                                    # 右括号
+    (?P<suffix>.*)$                       # 后面的所有内容
+    """,
+    re.VERBOSE
+)
+
     mat_line_idx, mat = None, None
-    prefix, suffix, vals = "", "", ""
+    suffix, vals = "", ""
     for i, line in enumerate(lines):
-        match = pattern.match(line)
+        match = pattern_cm.match(line)
         if match:
-            prefix = match.group("prefix")
             suffix = match.group("suffix")
             # 可能是 cm 形式，也可能是 [ ] 形式
-            #vals = match.group("vals1") or match.group("vals2")
-            vals = match.group("vals2")
-            a, b, c, d, e, f = map(float, vals.split())
-            mat = [a, b, c, d, e, f]
-            mat_line_idx = i
-            logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
-            break
+            vals = match.group("vals")
+            if vals is not None:
+                a, b, c, d, e, f = map(float, vals.split())
+                mat = [a, b, c, d, e, f]
+                mat_line_idx = i
+                logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
+                break
+
+        match = pattern_br.match(line)
+        if match:
+            suffix = match.group("suffix")
+            # 可能是 cm 形式，也可能是 [ ] 形式
+            vals = match.group("vals")
+            if vals is not None:
+                a, b, c, d, e, f = map(float, vals.split())
+                mat = [a, b, c, d, e, f]
+                mat_line_idx = i
+                logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
+                break
 
     if mat is not None and mat_line_idx is not None:
         mat = compute_trans_matrix(mat, **kwarg)            
-        if False: #pattern.match(lines[mat_line_idx]):
+        if pattern_cm.match(lines[mat_line_idx]):
             # 替换为 a b c d e f cm
-            new_line = f"{prefix}" + "{} {} {} {} {} {} cm".format(*mat) + f"{suffix}\n"
+            new_line = "{} {} {} {} {} {}".format(*mat) + f"{suffix}\n"
             lines[mat_line_idx] = new_line
-        else:
+        if pattern_br.match(lines[mat_line_idx]):
             # 替换为 [a b c d e f]
-            new_line = f"{prefix}" + "[{} {} {} {} {} {}]".format(*mat) + f"{suffix}"
+            new_line = "[{} {} {} {} {} {}]".format(*mat) + f"{suffix}"
             # 保留原行其他内容
             lines[mat_line_idx] = pattern.sub(new_line, lines[mat_line_idx])
         logger.info(f"[vector] EPS/PS transform matrix replaced: {mat}") if logger else None
@@ -449,7 +509,7 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
 
 
 def change_bbox(
-    in_path: str, out_path: str, old_bbox: tuple[float, float, float, float], new_bbox: tuple[float, float, float, float], logger: Optional[Logger] = None, tolerate: float = 1.5
+    in_path: str, out_path: str, old_bbox: tuple[float, float, float, float], new_bbox: tuple[float, float, float, float], logger: Optional[Logger] = None, tolerate: float = 2
 ) -> Optional[str]:
     """
     修改 EPS 文件中所有 W H 对（整数或浮点，带容差），精确替换为 new_w, new_h。

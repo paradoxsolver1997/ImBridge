@@ -24,7 +24,6 @@ class LabeledValidatedEntry(BaseFrame):
         super().__init__(parent)
         self.var = var
         self.bounds = bounds
-        self.label_prefix = label_prefix
         self.width = width
         self.enable_condition = enable_condition
         self.trace_vars = trace_vars or []
@@ -56,15 +55,7 @@ class LabeledValidatedEntry(BaseFrame):
                 return False
 
         vcmd = (self.register(validate), "%P")
-        '''
-        self.entry = ttk.Entry(
-            self,
-            textvariable=var,
-            width=width,
-            validate="focusout",
-            validatecommand=vcmd,
-        )
-        '''
+
         self.entry = ttk.Spinbox(
             self,
             textvariable=var,

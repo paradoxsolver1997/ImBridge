@@ -6,7 +6,7 @@ import os
 import tempfile
 
 import src.utils.converter as cv
-from src.utils.commons import get_script_size
+from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import script_formats, bitmap_formats
 
 
@@ -87,11 +87,10 @@ class PreviewFrame(BaseFrame):
         self.clear_preview()
         self._update_page_label()
 
-    def show_image(self, image, pt_size=None):
+    def show_image(self, image, img_size=None, unit='px'):
         try:
             img = image.copy()
-            orig_size = pt_size if pt_size else img.size
-            unit = "pt" if pt_size else "px"
+            orig_size = img_size if img_size else img.size
             self.update_idletasks()
             frame_w = self.preview_label.winfo_width()
             frame_h = self.preview_label.winfo_height()
@@ -119,37 +118,32 @@ class PreviewFrame(BaseFrame):
             self.preview_label.config(image="", text="Preview failed")
             self.preview_label.image = None
     
-    def show_file(self, img_path):
+    def show_file(self, img_path, process_callback=None):
         try:
             ext = os.path.splitext(img_path)[1].lower()
-            # Support vector preview: svg/pdf/eps/ps
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                if ext in script_formats:
-                    try:
-                        tmp_png = cv.script2raster(img_path, tmp_dir, out_fmt=".png", dpi=self.dpi)
-                        img = Image.open(tmp_png)
-                        sz = get_script_size(img_path)
-                        self.show_image(img, pt_size=sz)
-                    except Exception as ve:
-                        raise ve
-                elif ext == ".svg":
-                    try:
-                        tmp_png = cv.svg2raster(img_path, tmp_dir, out_fmt=".png")
-                        img = Image.open(tmp_png)
-                        self.show_image(img)
-                    except Exception as ve:
-                        raise ve
-                elif ext in bitmap_formats:
-                    img = Image.open(img_path)
-                    self.show_image(img)
-                else:
-                    # 不支持的格式
-                    if hasattr(self, "preview_label"):
-                        self.preview_label.config(image="", text="No Preview Available")
-                        self.preview_label.image = None
-                    if hasattr(self, "size_label"):
-                        self.size_label.config(text="")
-                self._update_page_label()
+            if ext in script_formats:
+                img = cv.show_script(img_path, dpi=self.dpi)
+                img = process_callback(img) if process_callback else img
+                sz = get_script_size(img_path)
+                self.show_image(img, img_size=sz, unit='pt')
+            elif ext == ".svg":
+                img = cv.show_svg(img_path)
+                img = process_callback(img) if process_callback else img
+                sz = get_svg_size(img_path)
+                self.show_image(img, img_size=sz, unit='px')
+            elif ext in bitmap_formats:
+                img = Image.open(img_path)
+                img = process_callback(img) if process_callback else img
+                sz = img.size
+                self.show_image(img, img_size=sz, unit='px')
+            else:
+                # 不支持的格式
+                if hasattr(self, "preview_label"):
+                    self.preview_label.config(image="", text="No Preview Available")
+                    self.preview_label.image = None
+                if hasattr(self, "size_label"):
+                    self.size_label.config(text="")
+            self._update_page_label()
         except Exception as e:
             # 只清空图片和尺寸信息，不销毁按钮和页码
             if hasattr(self, "preview_label"):

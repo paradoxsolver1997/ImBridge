@@ -81,7 +81,7 @@ class App(tk.Tk):
         convertion_tab = ConvertionTab(nb)
         nb.add(convertion_tab, text=" Convert ")
         enhance_tab = InkTab(nb)
-        nb.add(enhance_tab, text=" Inkwork ")
+        nb.add(enhance_tab, text=" Ink Magic ")
         transform_tab = TransformTab(nb)
         nb.add(transform_tab, text=" Transform ")
         crop_tab = CropTab(nb)

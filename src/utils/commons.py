@@ -8,6 +8,8 @@ import json
 import importlib
 import numpy as np
 from typing import Optional
+import xml.etree.ElementTree as ET
+from PIL import Image
 
 bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
@@ -204,6 +206,23 @@ def check_tool(tool_key: str) -> bool:
         return importlib.util.find_spec(tool_key) is not None
     except Exception:
         return False
+
+def get_raster_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        img = Image.open(in_path)
+        return img.size
+    except Exception:
+        raise 
+
+def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        tree = ET.parse(in_path)
+        root = tree.getroot()
+        width = int(float(root.get("width")))
+        height = int(float(root.get("height")))
+        return width, height
+    except Exception:
+        raise RuntimeError("Failed to parse SVG dimensions.")
 
 
 def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:

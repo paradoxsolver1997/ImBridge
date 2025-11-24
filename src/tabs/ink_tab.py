@@ -19,8 +19,8 @@ class InkTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Image Workshop",
-            comment_text="Quick processing of your image",
+            title_text="Ink Magic",
+            comment_text="Turn your image into grayscale, black & white, or vector sketch",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
@@ -34,30 +34,30 @@ class InkTab(BaseTab):
         }
 
         self.io_frame = InputOutputFrame(self, **parameters)
-        self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
+        self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 
-        row_1 = ttk.Frame(self)
-        row_1.pack(padx=(0, 0), pady=(4, 4), fill="x")
+        convert_frame = ttk.Frame(self)
+        convert_frame.pack(padx=(0, 0), pady=(8, 4), fill="x")
 
         # The Grayscale option
-        frm_1 = ttk.LabelFrame(
-            row_1, text="Option 1. Grayscale", style="Bold.TLabelframe"
+        option_1_frame = ttk.LabelFrame(
+            convert_frame, text="Option 1. Grayscale", style="Bold.TLabelframe"
         )
-        frm_1.pack(side="left", padx=8, pady=8, fill="both", expand=True)
+        option_1_frame.pack(side="left", padx=8, pady=0, fill="both", expand=True)
 
 
         # DPI enable checkbox and setting
         self.binarize_flag = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            frm_1,
-            text="Enable Binarize",
+            option_1_frame,
+            text="Binarize",
             variable=self.binarize_flag,
             onvalue=True,
             offvalue=False
         ).pack(side="left", padx=(6, 2))
 
         ttk.Button(
-            frm_1,
+            option_1_frame,
             text="Preview",
             command=lambda: ik.grayscale_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
@@ -70,7 +70,7 @@ class InkTab(BaseTab):
         ).pack(side="left", padx=(6, 8), pady=8)
 
         ttk.Button(
-            frm_1,
+            option_1_frame,
             text="Save",
             command=lambda: ik.grayscale_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
@@ -83,13 +83,13 @@ class InkTab(BaseTab):
         ).pack(side="left", padx=(6, 8), pady=8)
 
         # The Grayscale option
-        frm_1 = ttk.LabelFrame(
-            row_1, text="Option 2. Vectorize", style="Bold.TLabelframe"
+        option_2_frame = ttk.LabelFrame(
+            convert_frame, text="Option 2. Vectorize", style="Bold.TLabelframe"
         )
-        frm_1.pack(side="left", padx=8, pady=8, fill="both", expand=True)
+        option_2_frame.pack(side="left", padx=8, pady=0, fill="both", expand=True)
 
         ttk.Button(
-            frm_1,
+            option_2_frame,
             text="Preview",
             command=lambda: ik.trace_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
@@ -101,7 +101,7 @@ class InkTab(BaseTab):
         ).pack(side="left", padx=(6, 8), pady=8)
 
         ttk.Button(
-            frm_1,
+            option_2_frame,
             text="Save",
             command=lambda: ik.trace_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],

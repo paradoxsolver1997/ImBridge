@@ -15,7 +15,7 @@ from src.utils.commons import confirm_single_page
 from src.utils.commons import confirm_dir_existence
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_cropbox
-from src.utils.commons import get_script_size
+from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import compute_trans_matrix
 
 
@@ -65,15 +65,10 @@ def crop_svg(
     suffix = "cropped"
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
+    orig_width, orig_height = get_svg_size(in_path)    
     try:
         tree = ET.parse(in_path)
         root = tree.getroot()
-        orig_width = int(float(root.get("width")))
-        orig_height = int(float(root.get("height")))
-    except Exception:
-        raise RuntimeError("Failed to parse SVG dimensions.")
-    
-    try:
         if confirm_cropbox(crop_box, (orig_width, orig_height)):
             # crop_box: (left, top, right, bottom)
             x = crop_box[0]
@@ -90,7 +85,10 @@ def crop_svg(
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = os.path.join(tmp_dir, "temp.svg")
             tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
-            file_preview_callback(tmp_path) if file_preview_callback else None
+            file_preview_callback(
+                tmp_path, 
+                lambda: display_crop(crop_box=crop_box)
+            ) if file_preview_callback else None
             out_path = shutil.move(tmp_path, out_path) if save_image else None
             msg = f"[vector] SVG saved to {out_path}" if save_image else "[vector] SVG resized without saving"
             logger.info(msg) if logger else None
@@ -148,7 +146,10 @@ def crop_pdf(
                             
                         tmp_path = os.path.join(tmp_dir, "temp.pdf")
                         new_doc.save(tmp_path)
-                file_preview_callback(tmp_path) if file_preview_callback else None
+                file_preview_callback(
+                    tmp_path,
+                    lambda: display_crop(crop_box=crop_box)
+                ) if file_preview_callback else None
                 out_path = shutil.move(tmp_path, out_path) if save_image else None
                 msg = f"[vector] PDF saved to {out_path}" if save_image else "[vector] PDF resized without saving"
                 logger.info(msg) if logger else None
@@ -184,27 +185,27 @@ def crop_script(
 
         with tempfile.TemporaryDirectory() as tmp_dir:
 
-            tmp_out_0 = os.path.join(tmp_dir, "temp_0.eps")
-            tmp_out_1 = os.path.join(tmp_dir, "temp_1.eps")
-            tmp_out_2 = os.path.join(tmp_dir, "temp_2.eps")
-            tmp_out_3 = os.path.join(tmp_dir, "temp_3.eps")
+            tmp_path = os.path.join(tmp_dir, "temp.eps")
             
             if confirm_cropbox(crop_box, (orig_width, orig_height)):
                 change_bbox(
                     in_path=in_path, 
-                    out_path=tmp_out_0,
+                    out_path=tmp_path,
                     old_bbox=(0, 0, orig_width, orig_height),
                     new_bbox=crop_box, 
                     logger=logger
                 )
                 update_matrix(
-                    tmp_out_0, 
-                    tmp_out_0, 
+                    tmp_path, 
+                    tmp_path, 
                     translate=[crop_box[0], crop_box[1]]
                 )
             
-            file_preview_callback(tmp_out_0) if file_preview_callback else None
-            out_path = shutil.move(tmp_out_0, out_path) if save_image else None
+            file_preview_callback(
+                    tmp_path,
+                    lambda: display_crop(crop_box=crop_box)
+                ) if file_preview_callback else None
+            out_path = shutil.move(tmp_path, out_path) if save_image else None
         return out_path
 
 def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
