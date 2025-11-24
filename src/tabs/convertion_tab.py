@@ -18,6 +18,7 @@ class ConvertionTab(BaseTab):
         self._preview_imgtk = None
         self.output_dir = os.path.join(self.output_dir, "convertion_output")
         self.build_content()
+        self.on_files_var_changed()
 
     def build_content(self):
         # Tool check (ghostscript, pstoedit, cairosvg)
@@ -53,6 +54,7 @@ class ConvertionTab(BaseTab):
         bitmap_fmt_row = ttk.Frame(convert_frame)
         bitmap_fmt_row.pack(fill="x", padx=0, pady=4)
         self.out_fmt = tk.StringVar(value=".png")
+        self.out_fmt.trace_add("write", self.on_files_var_changed)
 
         ttk.Label(bitmap_fmt_row, text="Output format:").pack(
             side="left", padx=(8, 4), anchor="w"
@@ -71,10 +73,8 @@ class ConvertionTab(BaseTab):
             bitmap_fmt_row,
             var=self.quality_var,
             bounds=(1, 100),
-            label_prefix="Quality",
+            label_text="Quality",
             width=5,
-            enable_condition=lambda: self.out_fmt.get().lower() in (".jpg", ".jpeg"),
-            trace_vars=[self.out_fmt],
         )
         self.quality_labeled_entry.pack(side="left", padx=(4, 4))
 
@@ -84,7 +84,7 @@ class ConvertionTab(BaseTab):
             bitmap_fmt_row,
             var=self.dpi_var,
             bounds=(100, 600),
-            label_prefix="DPI",
+            label_text="DPI",
             width=6,
         )
         self.dpi_labeled_entry.pack(side="left", padx=(4, 4))
@@ -208,3 +208,10 @@ class ConvertionTab(BaseTab):
             if out_path and os.path.exists(out_path):
                 self.preview_frame.add_file_to_queue(out_path)
         self.logger.info("[Task Completed]")
+
+    def on_files_var_changed(self, *args):
+        if self.out_fmt.get().lower() in (".jpg", ".jpeg"):
+            self.quality_labeled_entry.activate()
+        else:
+            self.quality_labeled_entry.deactivate()
+        

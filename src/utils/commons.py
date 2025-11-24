@@ -25,16 +25,15 @@ def confirm_cropbox(cropbox: tuple[float, float, float, float], canvas_size: tup
     """
     left, top, right, bottom = cropbox
     width, height = canvas_size
+    print(f"Crop box: {cropbox}, Canvas size: {canvas_size}")
     if left < 0 or top < 0 or right > width or bottom > height:
-        root = tk._default_root or tk.Tk()
-        root.withdraw()
+        print("Crop box invalid, out of bounds.")
         msg = (
             f"The specified crop box {cropbox} is out of bounds for the canvas size {canvas_size}.\n"
             "Please adjust the crop box to fit within the image dimensions."
         )
         messagebox.showwarning("Invalid Crop Box", msg)
-        if not tk._default_root:
-            root.destroy()
+
         return False
     return True
 

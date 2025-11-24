@@ -6,7 +6,8 @@ import src.utils.cropper as cr
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
-from src.utils.commons import bitmap_formats
+from src.utils.commons import bitmap_formats, script_formats
+from src.utils.commons import get_script_size, get_svg_size, get_raster_size
 
 
 class CropTab(BaseTab):
@@ -18,6 +19,8 @@ class CropTab(BaseTab):
         self.output_dir = os.path.join(self.output_dir, "crop_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
+        self.on_files_var_changed()
+        self.on_crop(save_flag=False)
 
     def build_content(self):
 
@@ -43,10 +46,8 @@ class CropTab(BaseTab):
 
         self.io_frame = InputOutputFrame(self, **parameters)
         self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
-        '''
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
-        '''
-
+        
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
@@ -66,46 +67,48 @@ class CropTab(BaseTab):
         self.crop_x_entry = LabeledValidatedEntry(
             cord_row,
             var=self.crop_x_var,
-            bounds=(0, 10000),
-            label_prefix="X",
+            bounds=(0, 65535),
+            label_text="X",
             width=5,
         )
         self.crop_x_entry.pack(side="left", padx=(2, 2))
+        self.crop_x_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
         self.crop_y_var = tk.IntVar(value=0)
         self.crop_y_entry = LabeledValidatedEntry(
             cord_row,
             var=self.crop_y_var,
-            bounds=(0, 10000),
-            label_prefix="Y",
+            bounds=(0, 65535),
+            label_text="Y",
             width=5,
         )
         self.crop_y_entry.pack(side="left", padx=(2, 2))
+        self.crop_y_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
         size_row = ttk.Frame(frm_5)
         size_row.pack(side="top", fill="x", padx=4, pady=(4, 2))
 
-        self.crop_w_var = tk.IntVar(value=100)
+        self.crop_w_var = tk.IntVar(value=1)
         self.crop_w_entry = LabeledValidatedEntry(
             size_row,
             var=self.crop_w_var,
-            bounds=(1, 10000),
-            label_prefix="W",
+            bounds=(1, 65536),
+            label_text="W",
             width=5,
         )
         self.crop_w_entry.pack(side="left", padx=(2, 2))
+        self.crop_w_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
-        self.crop_h_var = tk.IntVar(value=100)
+        self.crop_h_var = tk.IntVar(value=1)
         self.crop_h_entry = LabeledValidatedEntry(
             size_row,
             var=self.crop_h_var,
-            bounds=(1, 10000),
-            label_prefix="H",
+            bounds=(1, 65536),
+            label_text="H",
             width=5,
         )
         self.crop_h_entry.pack(side="left", padx=(2, 2))
-
-        
+        self.crop_h_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
 
         frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
         frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
@@ -146,6 +149,9 @@ class CropTab(BaseTab):
         in_path = file_list[0]
         ext = os.path.splitext(in_path)[1].lower()
         self.preview_frame.clear_preview()
+        params = {
+            "dpi": self.preview_frame.dpi
+        }
         if ext in bitmap_formats:
             cr.crop_image(
                 in_path, 
@@ -171,7 +177,8 @@ class CropTab(BaseTab):
                 crop_box=crop_box,
                 save_image=save_flag,
                 file_preview_callback=self.preview_frame.show_file, 
-                logger=self.logger
+                logger=self.logger,
+                kwargs=params
             )
         elif ext in ['.eps', '.ps']:
             cr.crop_script(
@@ -180,8 +187,34 @@ class CropTab(BaseTab):
                 crop_box=crop_box,
                 save_image=save_flag,
                 file_preview_callback=self.preview_frame.show_file, 
-                logger=self.logger
+                logger=self.logger,
+                kwargs=params
             )
         else:
             self.logger.error("Unsupported file format for resizing.")
         return
+
+
+    def on_files_var_changed(self, *args):
+        file = self.io_frame.files_var.get().strip().split("\n")[0]
+        if file:
+            ext = os.path.splitext(file)[1].lower()
+
+            unit = 'pt' if ext in script_formats else 'px'
+            self.crop_w_entry.label.config(text=f"W ({unit})")
+            self.crop_h_entry.label.config(text=f"H ({unit})")
+            self.crop_x_entry.label.config(text=f"X ({unit})")
+            self.crop_y_entry.label.config(text=f"Y ({unit})")
+
+            if ext == '.svg':
+                sz = get_svg_size(file)
+            elif ext in script_formats:
+                sz = get_script_size(file)
+            else:
+                sz = get_raster_size(file)
+
+            self.crop_x_var.set(value=0)
+            self.crop_y_var.set(value=0)
+            self.crop_w_var.set(value=int(sz[0]))
+            self.crop_h_var.set(value=int(sz[1]))
+            self.on_crop(save_flag=False)

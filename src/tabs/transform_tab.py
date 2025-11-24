@@ -21,6 +21,7 @@ class TransformTab(BaseTab):
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
         self.update_mode()
+        self.on_files_var_changed()
 
     def build_content(self):
 
@@ -47,6 +48,7 @@ class TransformTab(BaseTab):
         self.io_frame = InputOutputFrame(self, **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
+        
 
         option_row = ttk.LabelFrame(self, text="Rescale Options", style="Bold.TLabelframe")
         option_row.pack(padx=(0, 0), pady=(8, 4), fill="x")
@@ -81,7 +83,7 @@ class TransformTab(BaseTab):
             frm_2,
             var=self.scale_x_factor_var,
             bounds=(0.001, 8.0),
-            label_prefix="X",
+            label_text="X",
             width=4,
         )
         self.scale_x_factor_labeled_entry.pack(side="left", padx=(6, 8))
@@ -91,7 +93,7 @@ class TransformTab(BaseTab):
             frm_2,
             var=self.scale_y_factor_var,
             bounds=(0.001, 8.0),
-            label_prefix="Y",
+            label_text="Y",
             width=4,
         )
         self.scale_y_factor_labeled_entry.pack(side="left", padx=(6, 8))
@@ -116,7 +118,7 @@ class TransformTab(BaseTab):
             row_2,
             var=self.width_var,
             bounds=(1, 65536),
-            label_prefix="W",
+            label_text="W",
             width=6,
         )
         self.width_entry.pack(side="left", padx=(6, 2))
@@ -126,7 +128,7 @@ class TransformTab(BaseTab):
             row_2,
             var=self.height_var,
             bounds=(1, 65536),
-            label_prefix="H",
+            label_text="H",
             width=6,
         )
         self.height_entry.pack(side="left", padx=(2, 2))
@@ -145,7 +147,7 @@ class TransformTab(BaseTab):
             upscale_frame,
             var=self.sharpness_var,
             bounds=(0.0, 10.0),
-            label_prefix="Sharpness",
+            label_text="Sharpness",
             width=6,
         )
         self.sharpness_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
@@ -155,7 +157,7 @@ class TransformTab(BaseTab):
             upscale_frame,
             var=self.blur_radius_var,
             bounds=(0.0, 10.0),
-            label_prefix="Blur Radius",
+            label_text="Blur Radius",
             width=5,
         )
         self.blur_radius_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
@@ -165,7 +167,7 @@ class TransformTab(BaseTab):
             upscale_frame,
             var=self.median_size_var,
             bounds=(1, 15),
-            label_prefix="Median Size",
+            label_text="Median Size",
             width=4,
         )
         self.median_size_entry.pack(side="top", fill="x", padx=(8, 4), pady=2)
@@ -354,7 +356,7 @@ class TransformTab(BaseTab):
             self.width_entry.label.config(text=f"W ({unit})")
             self.height_entry.label.config(text=f"H ({unit})")
             self.scale_x_factor_labeled_entry.label.config(text=f"X ({unit})")
-            self.scale_y_factor_labeled_entry.label.config(text=f"X ({unit})")
+            self.scale_y_factor_labeled_entry.label.config(text=f"Y ({unit})")
 
             if ext == '.pdf':
                 self.flip_horizontal_check.deactivate()

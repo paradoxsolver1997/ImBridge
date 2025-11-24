@@ -4,7 +4,7 @@ import os
 import tempfile
 import re
 import fitz  # PyMuPDF
-import shutil
+import math
 import xml.etree.ElementTree as ET
 
 from src.utils.logger import Logger
@@ -17,6 +17,8 @@ from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_cropbox
 from src.utils.commons import get_script_size, get_svg_size
 from src.utils.commons import compute_trans_matrix
+
+from src.utils.transformer import change_bbox, update_matrix
 
 
 def crop_image(
@@ -86,7 +88,9 @@ def crop_svg(
                 root.set("width", str(w))
                 root.set("height", str(h))
             else:
+                logger.info("[vector] Crop box invalid, skipping crop.") if logger else None
                 root.set("viewBox", f"0 0 {orig_width} {orig_height}")
+                return None
             
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
             file_preview_callback(out_path) if file_preview_callback else None
@@ -106,11 +110,20 @@ def crop_pdf(
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     file_preview_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None
+    logger: Optional[Logger] = None,
+    **kwargs
 ) -> Optional[str]:
     
-    def show_crop(img):
-        return display_crop(img, crop_box=crop_box)
+    dpi = kwargs.get("dpi", 96)
+
+    def show_crop(img):    
+        display_crop_box = (
+            max(math.floor(crop_box[0] / 72 * dpi), 0),
+            max(math.floor(crop_box[1] / 72 * dpi), 0),
+            math.floor(crop_box[2] / 72 * dpi),
+            math.floor(crop_box[3] / 72 * dpi),
+        )
+        return display_crop(img, crop_box=display_crop_box)
 
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -126,7 +139,8 @@ def crop_pdf(
                             rect = page.rect
                             orig_width = rect.width
                             orig_height = rect.height
-
+                            print(f"[vector] Original PDF page size: {orig_width} x {orig_height} pt")
+                            print(f"[vector] Applying crop box: {crop_box}")
                             new_page = new_doc.new_page(width=orig_width, height=orig_height)
                             new_page.show_pdf_page(
                                 new_page.rect,  # 目标矩形
@@ -163,7 +177,8 @@ def crop_script(
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     file_preview_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None
+    logger: Optional[Logger] = None,
+    **kwargs
 ) -> Optional[str]:
     """
     Resize or crop EPS/PS file by editing BoundingBox and HiResBoundingBox.
@@ -173,9 +188,16 @@ def crop_script(
       3. 完全二进制安全，支持包含二进制数据的 EPS
       只支持裁剪，不支持缩放
     """
+    dpi = kwargs.get("dpi", 96)
 
-    def show_crop(img):
-        return display_crop(img, crop_box=crop_box)
+    def show_crop_script(img):
+        display_crop_box = (
+            max(math.floor(crop_box[0] / 72 * dpi), 0),
+            max(math.floor(crop_box[1] / 72 * dpi), 0),
+            math.floor(crop_box[2] / 72 * dpi),
+            math.floor(crop_box[3] / 72 * dpi),
+        )
+        return display_crop(img, crop_box=display_crop_box, eps_coordinate=True)
     
     if save_image:
 
@@ -187,29 +209,43 @@ def crop_script(
         if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
             orig_width, orig_height = get_script_size(in_path)
             if confirm_cropbox(crop_box, (orig_width, orig_height)):
+                sz = get_script_size(in_path)
+                # Translate to origin, avoiding negative coordinates
+                # 先平移到原点，再裁剪，再平移回去
+                # 否则，可能出现负坐标，导致部分查看器无法正确显示
+                # 因此，必须分两步修改矩阵和 BoundingBox，不能合并为一步
+                update_matrix(
+                    out_path, 
+                    out_path, 
+                    translate=[0, crop_box[3] - sz[1]],  # y 方向平移
+                )
                 change_bbox(
                     in_path=in_path, 
                     out_path=out_path,
-                    old_bbox=(0, 0, orig_width, orig_height),
-                    new_bbox=crop_box, 
+                    old_bbox=(0, 0, max(orig_width, orig_height), max(orig_width, orig_height)),
+                    new_bbox=(0, 0, crop_box[2] - crop_box[0], crop_box[3] - crop_box[1]), 
                     logger=logger
                 )
                 update_matrix(
                     out_path, 
                     out_path, 
-                    translate=[crop_box[0], crop_box[1]]
+                    translate=[-crop_box[0], -crop_box[1]],  # y 方向平移
                 )
+                
+                
+            else:
+                print("[vector] Crop box invalid, skipping crop.")
             
             file_preview_callback(out_path) if file_preview_callback else None
             msg = f"[vector] EPS saved to {out_path}"
     else:
         out_path = None
-        file_preview_callback(in_path, show_crop) if file_preview_callback else None     
+        file_preview_callback(in_path, show_crop_script) if file_preview_callback else None     
         msg = f"[crop] see preview frame for cropping effect"
     logger.info(msg) if logger else None
     return out_path
 
-
+'''
 def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
 
     with open(in_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -246,11 +282,12 @@ def update_matrix(in_path: str, out_path: str, logger = None, **kwarg):
             # 可能是 cm 形式，也可能是 [ ] 形式
             #vals = match.group("vals1") or match.group("vals2")
             vals = match.group("vals2")
-            a, b, c, d, e, f = map(float, vals.split())
-            mat = [a, b, c, d, e, f]
-            mat_line_idx = i
-            logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
-            break
+            if vals is None:
+                a, b, c, d, e, f = map(float, vals.split())
+                mat = [a, b, c, d, e, f]
+                mat_line_idx = i
+                logger.info(f"[vector] Original EPS/PS transform matrix: {mat}") if logger else None
+                break
 
     if mat is not None and mat_line_idx is not None:
         mat = compute_trans_matrix(mat, **kwarg)            
@@ -356,8 +393,8 @@ def change_bbox(
 
     return (new_w, new_h)
 
-
-def display_crop(img, crop_box, box_color="white", box_width=3, mask_opacity=120):
+'''
+def display_crop(img, crop_box, eps_coordinate=False, box_color="white", box_width=3, mask_opacity=120):
     """
     在图像上绘制裁剪框，并在其外部加半透明遮罩。
     
@@ -369,6 +406,9 @@ def display_crop(img, crop_box, box_color="white", box_width=3, mask_opacity=120
         mask_opacity: 遮罩透明度，范围 0-255（越大越暗）
     """
     x, y, x2, y2 = crop_box
+    if eps_coordinate:
+        # EPS 坐标系，y 轴向上
+        y, y2 = img.height - y2, img.height - y
 
     # 复制一份图像，不修改原图
     img_out = img.copy().convert("RGBA")

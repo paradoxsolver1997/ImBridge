@@ -8,7 +8,7 @@ class LabeledValidatedEntry(BaseFrame):
     """
     A Widget Integrating Label + Entry + Validation + Enable Logic.
     Usage:
-        widget = LabeledValidatedEntry(parent, var, bounds, label_text, width=8, enable_condition=None)
+        widget = LabeledValidatedEntry(parent, var, bounds, label_text, width=8)
     """
 
     def __init__(
@@ -16,17 +16,13 @@ class LabeledValidatedEntry(BaseFrame):
         parent: tk.Widget,
         var: tk.Variable,
         bounds: tuple,
-        label_prefix: str,
+        label_text: str,
         width: int = 8,
-        enable_condition: callable = None,
-        trace_vars: list = None,
     ):
         super().__init__(parent)
         self.var = var
         self.bounds = bounds
         self.width = width
-        self.enable_condition = enable_condition
-        self.trace_vars = trace_vars or []
         # Type inference
         if isinstance(var, tk.IntVar):
             self.value_type = int
@@ -38,7 +34,7 @@ class LabeledValidatedEntry(BaseFrame):
             self.value_type = str
         # Automatically generate label text
         lower, upper = bounds
-        label_text = f"{label_prefix}"
+        label_text = f"{label_text}"
         self.label = ttk.Label(self, text=label_text)
         self.label.pack(side=tk.LEFT, padx=(0, 4), pady=(0, 4))
         # Tooltip for range
@@ -79,23 +75,3 @@ class LabeledValidatedEntry(BaseFrame):
                 self.entry.insert(0, self._last_valid_value)
 
         self.entry.bind("<FocusOut>", on_focus_out)
-        # Enable/Disable logic
-        if enable_condition is not None:
-
-            def update_state(*_):
-                enabled = enable_condition()
-                if enabled:
-                    self.entry.config(state="normal")
-                    self.label.config(foreground="black")
-                else:
-                    self.entry.config(state="disabled")
-                    self.label.config(foreground="gray")
-
-            self.var.trace_add("write", update_state)
-            for tvar in self.trace_vars:
-                tvar.trace_add("write", update_state)
-            update_state()
-            var.trace_add("write", update_state)
-            for tvar in self.trace_vars:
-                tvar.trace_add("write", update_state)
-            update_state()
