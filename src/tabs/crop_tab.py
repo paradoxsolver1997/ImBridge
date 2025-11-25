@@ -197,10 +197,13 @@ class CropTab(BaseTab):
 
             if ext == '.svg':
                 sz = vec.get_svg_size(file)
-            elif ext in script_formats:
+            elif ext == '.pdf':
+                sz = vec.get_pdf_size(file)
+            elif ext in ['.eps', '.ps']:
                 sz = vec.get_script_size(file)
             else:
                 sz = rst.get_raster_size(file)
+                
             self.crop_x_var.set(value=0)
             self.crop_y_var.set(value=0)
             self.crop_w_var.set(value=int(sz[0]))

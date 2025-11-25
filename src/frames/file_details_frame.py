@@ -121,7 +121,18 @@ class FileDetailsFrame(BaseFrame):
             except Exception as e:
                 meta['Size'] = 'Read failed'
         # PDF/EPS/PS: display physical dimensions (cm)
-        elif typ in ('PDF','EPS','PS'):
+        elif typ in ('PDF'):
+            try:
+                width_pt, height_pt = vec.get_pdf_size(path)
+                if width_pt and height_pt:
+                    width_in = width_pt/72
+                    height_in = height_pt/72
+                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} pt)'
+                else:
+                    meta['Size'] = 'N/A'
+            except Exception:
+                meta['Size'] = 'N/A'
+        elif typ in ('EPS','PS'):
             try:
                 width_pt, height_pt = vec.get_script_size(path)
                 if width_pt and height_pt:
@@ -135,13 +146,9 @@ class FileDetailsFrame(BaseFrame):
         # SVG: prefer width/height attributes (px), otherwise N/A
         elif typ == 'SVG':
             try:
-                import xml.etree.ElementTree as ET
-                tree = ET.parse(path)
-                root = tree.getroot()
-                w = root.get('width')
-                h = root.get('height')
+                (w, h), unit = vec.get_svg_size(path)
                 if w and h:
-                    meta['Size'] = f'{w} × {h} px'
+                    meta['Size'] = f'{w} × {h} {unit}'
                 else:
                     meta['Size'] = 'N/A'
             except Exception:

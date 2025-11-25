@@ -107,24 +107,21 @@ def transform_svg(
     in_path: str,
     out_dir: str,
     save_image: bool = True,
-    file_preview_callback: Optional[Callable] = None,
+    preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
     **kwargs
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
     
-    def show_transform(img):
-        return transform_raster(img, logger=logger, **kwargs)
-
     def mat2str(mat: list[float, float, float, float, float, float]) -> str:
         return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
-
+    (orig_width, orig_height), unit = vec.get_svg_size(in_path)
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
         in_fmt = os.path.splitext(in_path)[1].lower()
         suffix = "resized"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
-
-        orig_width, orig_height = vec.get_svg_size(in_path)
+        
+        
         mat = vec.compute_trans_matrix()
 
         if 'new_width' in kwargs and 'new_height' in kwargs:
@@ -180,8 +177,7 @@ def transform_svg(
                 rotate_angle=angle, 
                 translate=angle_map.get(angle, [0, 0])
             )
-            logger.info(f"[vector] Rotating SVG by {angle} degrees") if logger else None
-
+            logger.info(f"[Transform] Rotating SVG by {angle} degrees") if logger else None
         try:
             g = ET.Element("g")
             for child in list(root):
@@ -189,19 +185,18 @@ def transform_svg(
                 root.remove(child)
             g.set("transform", " ".join([mat2str(mat)]))
             root.append(g)
-            
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_path = os.path.join(tmp_dir, "temp.svg")
-                tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
-                file_preview_callback(tmp_path) if file_preview_callback else None
-                out_path = shutil.move(tmp_path, out_path) if save_image else None
-            logger.info("[vector] see preview frame for transformation effect") if logger else None
+            tree.write(out_path, encoding="utf-8", xml_declaration=True)
+            vec.optimize_svg(out_path, out_path)
+            preview_img = vec.show_svg(out_path)
+            preview_callback(preview_img, (orig_width, orig_height), unit) if preview_callback else None
+            logger.info(f"[Transform] svg saved to {out_path}") if logger else None
             return out_path
         except Exception as e:
             raise RuntimeError(f"SVG transform failed: {e}")
     else:
-        file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        logger.info("[Transform] see preview frame for transformation effect") if logger else None
+        preview_img = transform_raster(vec.show_svg(in_path), logger=logger, **kwargs)
+        preview_callback(preview_img, (orig_width, orig_height), unit) if preview_callback else None
+        logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None
 
 
@@ -209,13 +204,12 @@ def transform_pdf(
     in_path: str,
     out_dir: str,
     save_image: bool = True,
-    file_preview_callback: Optional[Callable] = None,
+    preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
     **kwargs
 ) -> Optional[str]:
     
-    def show_transform(img):
-        return transform_raster(img, logger=logger, **kwargs)
+    dpi = kwargs.get("dpi", 96)
 
     if not confirm_single_page(in_path):
         return None
@@ -268,21 +262,26 @@ def transform_pdf(
                         if 'flip_lr' in kwargs or 'flip_tb' in kwargs:
                             logger.error(f"[vector] Flipping PDF page is not supported.") if logger else None
                         new_doc.save(out_path)
-                file_preview_callback(out_path) if file_preview_callback else None
-                logger.info(f"[vector] PDF saved to {out_path}") if logger else None
+                preview_img = vec.show_script(out_path, dpi=dpi)
+                preview_callback(preview_img) if preview_callback else None
+                logger.info(f"[Transform] PDF saved to {out_path}") if logger else None
                 return out_path
             except Exception as e:
-                raise RuntimeError(f"PDF crop/resize failed: {e}")
+                raise RuntimeError(f"[Transform] PDF crop/resize failed: {e}")
     else:
-        file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        logger.info(f"[crop] see preview frame for cropping effect") if logger else None
-        return out_path
+        preview_img = transform_raster(vec.show_script(in_path, dpi=dpi), logger=logger, **kwargs)
+        sz = (int(preview_img.width / dpi * 72), int(preview_img.height / dpi * 72))
+        preview_callback(preview_img, sz, "pt") if preview_callback else None
+        logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
+        return None
+
+
 
 def transform_script(
     in_path: str,
     out_dir: str,
     save_image: bool = True,
-    file_preview_callback: Optional[Callable] = None,
+    preview_callback: Optional[Callable] = None,
     logger: Optional[Logger] = None,
     **kwargs
 ) -> Optional[str]:
@@ -294,8 +293,7 @@ def transform_script(
       3. 完全二进制安全，支持包含二进制数据的 EPS
       只支持裁剪，不支持缩放
     """
-    def show_transform(img):
-        return transform_raster(img, logger=logger, **kwargs)
+    dpi = kwargs.get("dpi", 96)
 
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -304,7 +302,7 @@ def transform_script(
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
         
         if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-            orig_width, orig_height = vec.get_script_size(in_path)
+            (orig_width, orig_height), _ = vec.get_script_size(in_path)
             if 'new_width' in kwargs and 'new_height' in kwargs:
                 target_width = float(kwargs['new_width'])
                 target_height = float(kwargs['new_height'])
@@ -357,7 +355,7 @@ def transform_script(
                     rotate_angle=angle, 
                     translate=angle_map.get(angle, [0, 0])
                 )
-                logger.info(f"[vector] Rotating EPS by {angle} degrees") if logger else None
+                logger.info(f"[Transform] Rotating EPS by {angle} degrees") if logger else None
 
             vec.change_bbox(
                 in_path=out_path, 
@@ -366,9 +364,12 @@ def transform_script(
                 new_bbox=(0, 0, target_width, target_height),
                 logger=logger
             )
-            file_preview_callback(out_path) if file_preview_callback else None
-            logger.info(f"[vector] EPS/PS saved to {out_path}") if logger else None
+            preview_img = vec.show_script(out_path, dpi=dpi)
+            preview_callback(preview_img) if preview_callback else None
+            logger.info(f"[Transform] EPS/PS saved to {out_path}") if logger else None
     else:
-        file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        logger.info(f"[crop] see preview frame for cropping effect") if logger else None
+        preview_img = transform_raster(vec.show_script(in_path, dpi=dpi), logger=logger, **kwargs)
+        sz = (int(preview_img.width / dpi * 72), int(preview_img.height / dpi * 72))
+        preview_callback(preview_img, sz, "pt") if preview_callback else None
+        logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None

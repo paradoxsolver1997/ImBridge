@@ -9,6 +9,7 @@ import re
 import fitz  # PyMuPDF
 import numpy as np
 from xml.etree import ElementTree as ET
+import scour.scour as scour
 
 import src.utils.converter as cv
 import src.utils.raster as rst
@@ -108,9 +109,23 @@ def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     try:
         tree = ET.parse(in_path)
         root = tree.getroot()
-        width = int(float(root.get("width")))
-        height = int(float(root.get("height")))
-        return width, height
+        match = re.search(r'(\d+\.?\d*)(\D*)', root.get("width"))  # 匹配数字（包括小数）
+        if match:
+            width = int(float(match.group(1)))
+            unit_w = match.group(2).strip()
+        match = re.search(r'(\d+\.?\d*)(\D*)', root.get("height"))  # 匹配数字（包括小数）
+        if match:
+            height = int(float(match.group(1)))
+            unit_h = match.group(2).strip()
+        if not width or not height:
+            raise RuntimeError("SVG width or height attribute missing or invalid.")
+        if unit_w == "":
+            unit_w = "px"
+        if unit_h == "":
+            unit_h = "px"
+        if unit_w != unit_h:
+            raise RuntimeError("SVG width and height units do not match.")
+        return (width, height), unit_w
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
 
@@ -120,7 +135,7 @@ def get_pdf_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
             page = doc[0]
             width_pt = page.rect.width
             height_pt = page.rect.height
-        return width_pt, height_pt
+        return width_pt, height_pt, "pt"
     except Exception:
             raise RuntimeError("Failed to parse PDF dimensions.")
 
@@ -141,7 +156,7 @@ def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
                     break
             else:
                 width_pt = height_pt = None
-        return width_pt, height_pt
+        return width_pt, height_pt, "pt"
     except Exception:
         raise RuntimeError("Failed to parse PS/EPS dimensions.")
 
@@ -523,3 +538,21 @@ def trace_bmp_to_svg(
                 return out_path
             except Exception as e:
                 raise RuntimeError(f'potrace.exe failed: {e}')
+
+
+def optimize_svg(input_path: str, output_path: str):
+    """Optimize SVG using Scour"""
+    with open(input_path, 'r', encoding='utf-8') as f:
+        input_svg = f.read()
+    
+    # 设置优化选项
+    options = scour.sanitizeOptions()
+    options.enable_viewboxing = True
+    options.strip_comments = True
+    options.strip_ids = False
+    options.remove_metadata = True
+    
+    optimized_svg = scour.scourString(input_svg, options)
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(optimized_svg)

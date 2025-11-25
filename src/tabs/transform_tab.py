@@ -304,7 +304,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                image_preview_callback=self.preview_frame.show_image, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger, 
                 **params)
         elif ext == '.svg':
@@ -312,7 +312,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger, 
                 **params)
         elif ext == '.pdf':
@@ -321,7 +321,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger, 
                 **params)
         elif ext in ['.eps', '.ps']:
@@ -330,7 +330,7 @@ class TransformTab(BaseTab):
                 in_path, 
                 self.io_frame.out_dir_var.get(),
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger, 
                 **params)
         else:
@@ -340,7 +340,7 @@ class TransformTab(BaseTab):
 
     def on_files_var_changed(self, *args):
         file = self.io_frame.files_var.get().strip().split("\n")[0]
-        if file:
+        if file and os.path.isfile(file):
             self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
             if ext in vector_formats:
@@ -361,10 +361,13 @@ class TransformTab(BaseTab):
 
             if ext == '.svg':
                 sz = vec.get_svg_size(file)
-            elif ext in script_formats:
+            elif ext == '.pdf':
+                sz = vec.get_pdf_size(file)
+            elif ext in ['.eps', '.ps']:
                 sz = vec.get_script_size(file)
             else:
                 sz = rst.get_raster_size(file)
+                
             self.width_entry.var.set(value=sz[0])
             self.height_entry.var.set(value=sz[1])
 

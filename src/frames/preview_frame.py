@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import os
+from pillow_heif import register_heif_opener
 
 from src.frames.base_frame import BaseFrame
 import src.utils.vector as vec
-from src.utils.commons import script_formats, bitmap_formats
+from src.utils.commons import script_formats, bitmap_formats, heif_formats
 
 
 class PreviewFrame(BaseFrame):
@@ -121,17 +122,28 @@ class PreviewFrame(BaseFrame):
             if ext in script_formats:
                 img = vec.show_script(img_path, dpi=self.dpi)
                 img = process_callback(img.copy()) if process_callback else img
-                sz = vec.get_script_size(img_path)
-                self.show_image(img, img_size=sz, unit='pt')
+                sz, unit = vec.get_script_size(img_path)
+                self.show_image(img, img_size=sz, unit=unit)
+            elif ext == ".pdf":
+                img = vec.show_script(img_path)
+                img = process_callback(img) if process_callback else img
+                sz, unit = vec.get_pdf_size(img_path)
+                self.show_image(img, img_size=sz, unit=unit)
             elif ext == ".svg":
                 img = vec.show_svg(img_path)
                 img = process_callback(img) if process_callback else img
-                sz = vec.get_svg_size(img_path)
+                sz, unit = vec.get_svg_size(img_path)
+                self.show_image(img, img_size=sz, unit=unit)
+            elif ext in heif_formats:
+                register_heif_opener()
+                img = Image.open(img_path)
+                img = process_callback(img) if process_callback else img
+                sz, = img.size
                 self.show_image(img, img_size=sz, unit='px')
             elif ext in bitmap_formats:
                 img = Image.open(img_path)
                 img = process_callback(img) if process_callback else img
-                sz = img.size
+                sz, = img.size
                 self.show_image(img, img_size=sz, unit='px')
             else:
                 # Unsupported format
