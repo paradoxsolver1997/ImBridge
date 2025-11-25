@@ -28,8 +28,8 @@ class TransformTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Resize & Crop Tool",
-            comment_text="Quickly resize and crop your image",
+            title_text="Transform Tool",
+            comment_text="Rescale, flip, and rotate your image",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
@@ -46,13 +46,13 @@ class TransformTab(BaseTab):
             "default_output_dir": self.output_dir,
         }
 
-        self.io_frame = InputOutputFrame(self, **parameters)
+        self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
         
 
         option_row = ttk.LabelFrame(self, text="Rescale Options", style="Bold.TLabelframe")
-        option_row.pack(padx=(0, 0), pady=(8, 4), fill="x")
+        option_row.pack(padx=(8, 8), pady=(4, 4), fill="x")
 
         # Row 1: Mode Selection
         # The Upscale options
@@ -141,11 +141,11 @@ class TransformTab(BaseTab):
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
-        parameter_row.pack(side="left", padx=(0, 0), pady=(4, 4), fill="x")
+        parameter_row.pack(side="left", padx=(8, 8), pady=(4, 4), fill="both", expand=True)
 
         # The Parameter Settings
         upscale_frame = ttk.LabelFrame(parameter_row, text="Upscale Parameters", style="Bold.TLabelframe")
-        upscale_frame.pack(side="left", padx=(4, 2), pady=0, fill="y",expand=True)
+        upscale_frame.pack(side="left", padx=(0, 2), pady=0, fill="both", expand=True)
 
         self.sharpness_var = tk.DoubleVar(value=5.0)
         self.sharpness_entry = LabeledValidatedEntry(
@@ -178,10 +178,10 @@ class TransformTab(BaseTab):
         self.median_size_entry.pack(side="top", fill="x", padx=(8, 4), pady=1)
 
         flip_frame = ttk.LabelFrame(parameter_row, text="Flip", style="Bold.TLabelframe")
-        flip_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
+        flip_frame.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
         self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
-        self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(2,2))
+        self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(12,2))
         self.flip_horizontal_check.var.trace_add("write", lambda *args: self.on_transform())
 
         self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
@@ -189,11 +189,12 @@ class TransformTab(BaseTab):
         self.flip_vertical_check.var.trace_add("write", lambda *args: self.on_transform())
 
         rotate_frame = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
-        rotate_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
+        rotate_frame.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
         # 旋转角度下拉菜单
         self.rotate_angle_var = tk.IntVar(value=0)
-        ttk.Label(rotate_frame, text="Angle (°)").pack(side="top", anchor="w", padx=6, pady=(8,2))
+        ttk.Label(rotate_frame, text="Angle [°]").pack(side="top", anchor="w", padx=6, pady=(4, 2))
+        ttk.Label(rotate_frame, text="(anti-clockwise)").pack(side="top", anchor="w", padx=6, pady=(2, 6))
         self.rotate_angle_combo = ttk.Combobox(
             rotate_frame,
             textvariable=self.rotate_angle_var,
@@ -204,25 +205,25 @@ class TransformTab(BaseTab):
         self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
         self.rotate_angle_var.trace_add("write", lambda *args: self.on_transform())
 
-        control_frame = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        control_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
+        control_frame = ttk.LabelFrame(parameter_row, text="Control", style="Bold.TLabelframe")
+        control_frame.pack(side="left", padx=8, pady=0, fill="both",expand=True)
 
         # --- Preview 按钮 ---
         preview_btn_row = ttk.Frame(control_frame)
-        preview_btn_row.pack(fill="x", padx=8, pady=(6, 6), anchor="e")
+        preview_btn_row.pack(fill="x", padx=8, pady=(12, 6), anchor="e")
         ttk.Button(
             preview_btn_row,
-            text="Confirm",
+            text="Preview",
             command=lambda: self.on_transform(save_flag=False)
-        ).pack(side="right", padx=(2, 8))
+        ).pack(padx=8)
 
         save_btn_row = ttk.Frame(control_frame)
-        save_btn_row.pack(fill="x", padx=8, pady=(8, 12), anchor="e")
+        save_btn_row.pack(fill="x", padx=8, pady=(6, 12), anchor="e")
         ttk.Button(
             save_btn_row,
             text="Save",
             command=lambda: self.on_transform(save_flag=True)
-        ).pack(side="left", padx=8)
+        ).pack(padx=8)
 
 
 

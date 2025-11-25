@@ -28,10 +28,10 @@ def trace_image(
             in_fmt = os.path.splitext(in_path)[1].lower()
             if in_fmt != '.bmp':
                 # Automatically convert to bmp temporary file
-                temp_bmp, _ = cv.raster_convert(in_path, tmp_dir, out_fmt='.bmp', logger=logger)
-                bmp_path, _ = grayscale_image(temp_bmp, tmp_dir, binarize=True, show_image=False, save_image=True, logger=logger)
+                temp_bmp = cv.raster_convert(in_path, tmp_dir, out_fmt='.bmp', logger=logger)
+                bmp_path = grayscale_image(temp_bmp, tmp_dir, binarize=True, save_image=True, logger=logger)
             else:
-                bmp_path, _ = grayscale_image(in_path, tmp_dir, binarize=True, show_image=False, save_image=True, logger=logger)
+                bmp_path = grayscale_image(in_path, tmp_dir, binarize=True, save_image=True, logger=logger)
             if save_image:
                 out_path = trace_bmp_to_svg(bmp_path, out_dir, logger=logger)
                 project_callback(cv.show_svg(out_path)) if project_callback else None
@@ -142,7 +142,7 @@ def trace_bmp_to_svg(
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
 
         if confirm_overwrite(out_path):
-            cmd = [potrace_exe, in_path, '-o', out_path, '-b', out_fmt.lower()]
+            cmd = [potrace_exe, in_path, '-o', out_path, '-s']
             try:
                 subprocess.run(cmd, check=True)
                 logger.info(f'potrace.exe converted {os.path.basename(in_path)} to {os.path.basename(out_path)} successfully.') if logger else None

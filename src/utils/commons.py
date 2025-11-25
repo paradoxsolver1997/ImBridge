@@ -25,9 +25,7 @@ def confirm_cropbox(cropbox: tuple[float, float, float, float], canvas_size: tup
     """
     left, top, right, bottom = cropbox
     width, height = canvas_size
-    print(f"Crop box: {cropbox}, Canvas size: {canvas_size}")
     if left < 0 or top < 0 or right > width or bottom > height:
-        print("Crop box invalid, out of bounds.")
         msg = (
             f"The specified crop box {cropbox} is out of bounds for the canvas size {canvas_size}.\n"
             "Please adjust the crop box to fit within the image dimensions."
@@ -213,103 +211,3 @@ def get_raster_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     except Exception:
         raise 
 
-def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
-    try:
-        tree = ET.parse(in_path)
-        root = tree.getroot()
-        width = int(float(root.get("width")))
-        height = int(float(root.get("height")))
-        return width, height
-    except Exception:
-        raise RuntimeError("Failed to parse SVG dimensions.")
-
-
-def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
-    """
-    获取脚本类矢量文件（pdf/ps/eps）的页面尺寸，单位pt。
-    支持PDF（用fitz）和PS/EPS（用BoundingBox）。
-    """
-    import os
-    ext = os.path.splitext(in_path)[1].lower()
-    if ext == ".pdf":
-        import fitz
-        with fitz.open(in_path) as doc:
-            page = doc[0]
-            width_pt = page.rect.width
-            height_pt = page.rect.height
-        return width_pt, height_pt
-    elif ext in (".ps", ".eps"):
-        with open(in_path, 'r', encoding='utf-8', errors='ignore') as f:
-            import re
-            bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
-            for line in f:
-                m = bbox_pat.match(line)
-                if m:
-                    llx, lly, urx, ury = [int(m.group(i)) for i in range(1,5)]
-                    width_pt = urx - llx
-                    height_pt = ury - lly
-                    break
-            else:
-                width_pt = height_pt = None
-        return width_pt, height_pt
-    else:
-        return None, None
-
-
-def compute_trans_matrix(
-    base_mat: Optional[list[float, float, float, float, float, float]] = [1, 0, 0, 1, 0, 0],
-    rotate_angle: Optional[float] = None,   # 度
-    flip_lr: Optional[bool] = None,
-    flip_tb: Optional[bool] = None,
-    translate: Optional[list[float]] = None,
-    scale: Optional[list[float]] = None  # [sx, sy]
-) -> list[float, float, float, float, float, float]:
-    """
-    返回 SVG matrix(a,b,c,d,e,f)
-    变换顺序: rotate -> scale -> flip -> translate
-    """
-    # 旋转矩阵
-    B = np.array([[base_mat[0], base_mat[2], base_mat[4]],
-                [base_mat[1], base_mat[3], base_mat[5]],
-                [0, 0, 1]])
-
-    if rotate_angle is not None:
-        theta = np.radians(rotate_angle)
-        R = np.array([[np.cos(theta), np.sin(theta), 0],
-                    [-np.sin(theta), np.cos(theta), 0],
-                    [0, 0, 1]])
-    else:
-        R = np.eye(3)
-
-    # 缩放矩阵
-    S = np.array([[scale[0], 0, 0],
-                  [0, scale[1], 0],
-                  [0, 0, 1]]) if scale is not None else np.eye(3)
-    
-    # 翻转矩阵
-    if flip_lr:
-        F_LR = np.array([[-1, 0, 0],
-                    [0, 1, 0],
-                    [0, 0, 1]])
-    else:
-        F_LR = np.eye(3)
-    
-    if flip_tb:
-        F_TB = np.array([[1, 0, 0],
-                    [0, -1, 0],
-                    [0, 0, 1]])
-    else:
-        F_TB = np.eye(3)
-
-    # 平移矩阵
-    T = np.array([[1, 0, translate[0]],
-                  [0, 1, translate[1]],
-                  [0, 0, 1]]) if translate is not None else np.eye(3)
-    
-    # 依次相乘
-    M = T @ R @ F_TB @ F_LR @ S @ B
-    
-    # 返回 SVG matrix(a,b,c,d,e,f)
-    a, c, e = M[0]
-    b, d, f = M[1]
-    return [a, b, c, d, e, f]

@@ -33,7 +33,7 @@ class InkTab(BaseTab):
             "default_output_dir": self.output_dir,
         }
 
-        self.io_frame = InputOutputFrame(self, **parameters)
+        self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 
         convert_frame = ttk.Frame(self)
@@ -66,8 +66,9 @@ class InkTab(BaseTab):
                 preview_callback=self.preview_frame.show_image,
                 save_image=False,
                 logger=self.logger,
-            )
-        ).pack(side="left", padx=(6, 8), pady=8)
+            ),
+            width=12
+        ).pack(side="left", padx=(18, 4), pady=8)
 
         ttk.Button(
             option_1_frame,
@@ -79,8 +80,9 @@ class InkTab(BaseTab):
                 preview_callback=self.preview_frame.show_image,
                 save_image=True,
                 logger=self.logger,
-            )
-        ).pack(side="left", padx=(6, 8), pady=8)
+            ),
+            width=12
+        ).pack(side="left", padx=(4, 12), pady=8)
 
         # The Grayscale option
         option_2_frame = ttk.LabelFrame(
@@ -94,11 +96,12 @@ class InkTab(BaseTab):
             command=lambda: ik.trace_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
                 out_dir=self.io_frame.out_dir_var.get(),
-                preview_callback=self.preview_frame.show_image,
+                project_callback=self.preview_frame.show_image,
                 save_image=False,
                 logger=self.logger,
-            )
-        ).pack(side="left", padx=(6, 8), pady=8)
+            ),
+            width=12
+        ).pack(side="left", padx=(18, 4), pady=8)
 
         ttk.Button(
             option_2_frame,
@@ -106,8 +109,9 @@ class InkTab(BaseTab):
             command=lambda: ik.trace_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
                 out_dir=self.io_frame.out_dir_var.get(),
-                preview_callback=self.preview_frame.show_image,
+                project_callback=self.preview_frame.show_image,
                 save_image=True,
                 logger=self.logger,
-            )
-        ).pack(side="left", padx=(6, 8), pady=8)
+            ),
+            width=12
+        ).pack(side="left", padx=(4, 12), pady=8)

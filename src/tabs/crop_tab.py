@@ -26,8 +26,8 @@ class CropTab(BaseTab):
 
         self.title_frame = TitleFrame(
             self,
-            title_text="Resize & Crop Tool",
-            comment_text="Quickly resize and crop your image",
+            title_text="Crop Tool",
+            comment_text="Quickly crop your image with preview",
         )
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
@@ -44,7 +44,7 @@ class CropTab(BaseTab):
             "default_output_dir": self.output_dir,
         }
 
-        self.io_frame = InputOutputFrame(self, **parameters)
+        self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(4, 2), fill="x")
         self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
         
@@ -106,23 +106,14 @@ class CropTab(BaseTab):
         ttk.Button(
             cord_row,
             text="Confirm",
-            command=lambda e: self.on_crop(save_flag=False)
+            command=lambda: self.on_crop(save_flag=False)
         ).pack(side="left", padx=(2, 8))
 
-        #save_btn_row = ttk.Frame(cord_row)
-        #save_btn_row.pack(fill="x", padx=8, pady=(8, 12))
         ttk.Button(
             cord_row,
             text="Save",
             command=lambda: self.on_crop(save_flag=True)
         ).pack(side="right", fill='x', padx=8)
-
-        
-
-        #frm_7 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
-        #frm_7.pack(side="left", padx=8, pady=8, fill="y",expand=True)
-
-        
 
 
     def on_crop(self, save_flag=False):
@@ -192,6 +183,7 @@ class CropTab(BaseTab):
     def on_files_var_changed(self, *args):
         file = self.io_frame.files_var.get().strip().split("\n")[0]
         if file:
+            self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
 
             unit = 'pt' if ext in script_formats else 'px'

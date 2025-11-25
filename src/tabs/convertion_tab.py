@@ -42,22 +42,24 @@ class ConvertionTab(BaseTab):
             "output_label": "Output Folder",
             "default_output_dir": self.output_dir,
         }
-        self.io_frame = InputOutputFrame(self, title="Settings", **parameters)
+        self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
 
+        convert_row = ttk.Frame(self)
+        convert_row.pack(side="top", padx=(0, 0), pady=(0, 4), fill="x", expand=True, anchor="n")
 
         # Bitmap format selection
         convert_frame = ttk.LabelFrame(
-            self, text="Convertion", style="Bold.TLabelframe"
+            convert_row, text="Out Format", style="Bold.TLabelframe"
         )
-        convert_frame.pack(padx=(6, 8), pady=(8, 4), fill="x")
+        convert_frame.pack(side="left", padx=(6, 8), pady=(8, 4), fill="both", expand=True)
         bitmap_fmt_row = ttk.Frame(convert_frame)
         bitmap_fmt_row.pack(fill="x", padx=0, pady=4)
         self.out_fmt = tk.StringVar(value=".png")
         self.out_fmt.trace_add("write", self.on_files_var_changed)
 
-        ttk.Label(bitmap_fmt_row, text="Output format:").pack(
-            side="left", padx=(8, 4), anchor="w"
+        ttk.Label(bitmap_fmt_row, text="Ext:").pack(
+            side="left", padx=(8, 8), pady=8, anchor="w"
         )
         ttk.Combobox(
             bitmap_fmt_row,
@@ -65,32 +67,43 @@ class ConvertionTab(BaseTab):
             values=[".jpg", ".png", ".bmp", ".tiff", ".jpeg", ".svg", ".pdf", ".eps", ".ps"],
             width=8,
             state="readonly",
-        ).pack(side="left", padx=(8, 4))
+        ).pack(side="left", padx=(8, 8), pady=8)
 
+        parameter_frame = ttk.LabelFrame(
+            convert_row, text="Parameters", style="Bold.TLabelframe"
+        )
+        parameter_frame.pack(side="left", padx=(6, 8), pady=(8, 4), fill="both", expand=True, anchor="n")
+        sub_frame = ttk.Frame(parameter_frame)
+        sub_frame.pack(side="top", pady=(4, 4), fill="x", expand=True, anchor="n")
         # Quality setting
         self.quality_var = tk.IntVar(value=95)
         self.quality_labeled_entry = LabeledValidatedEntry(
-            bitmap_fmt_row,
+            sub_frame,
             var=self.quality_var,
             bounds=(1, 100),
             label_text="Quality",
             width=5,
         )
-        self.quality_labeled_entry.pack(side="left", padx=(4, 4))
+        self.quality_labeled_entry.pack(side="left", padx=(4, 4), pady=(8,8))
 
 
         self.dpi_var = tk.IntVar(value=300)
         self.dpi_labeled_entry = LabeledValidatedEntry(
-            bitmap_fmt_row,
+            sub_frame,
             var=self.dpi_var,
             bounds=(100, 600),
             label_text="DPI",
             width=6,
         )
-        self.dpi_labeled_entry.pack(side="left", padx=(4, 4))
+        self.dpi_labeled_entry.pack(side="left", padx=(4, 4), pady=(8, 8))
+
+        control_frame = ttk.LabelFrame(
+            convert_row, text="Out Format", style="Bold.TLabelframe"
+        )
+        control_frame.pack(side="left", padx=(6, 8), pady=(8, 4), fill="both", expand=True)
 
         ttk.Button(
-            bitmap_fmt_row,
+            control_frame,
             text="Convert",
             command=lambda: self.batch_convert(
                 file_list=self.io_frame.files_var.get().strip().split("\n"),
@@ -99,7 +112,8 @@ class ConvertionTab(BaseTab):
                 quality=self.quality_var.get(),
                 dpi=self.dpi_var.get(),
             ),
-        ).pack(side="right", padx=8)
+            width=16
+        ).pack(padx=8, pady=(8, 12))
 
 
     def batch_convert(self, file_list, out_dir, out_ext, **kwargs):

@@ -27,6 +27,18 @@ device_map = {
     ".tiff": "tiff24nc",
 }
 
+
+def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
+    """Remove alpha channel from an image by compositing onto a background color."""
+    if img.mode == "RGBA":
+        background = Image.new("RGB", img.size, bg_color)
+        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+        return background
+    elif img.mode != "RGB" and img.mode != "L":
+        return img.convert("RGB")
+    return img
+
+
 def raster_convert(
     in_path: str,
     out_dir: str,
@@ -291,40 +303,6 @@ def script_convert(in_path: str, out_dir: str, out_fmt: str = None, logger: Opti
         subprocess.run(cmd, check=True)
         logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
         return out_path
-        
-
-def show_script(in_path: str, dpi: int = 96) -> Image.Image:
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            print(os.path.exists(in_path))
-            out_path = script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
-            img = Image.open(out_path)
-            img.load()  # 强制读取到内存
-        return img
-    except Exception as ve:
-        raise ve
-
-
-def show_svg(in_path: str) -> Image.Image:
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            out_path = svg2raster(in_path, tmp_dir, out_fmt=".png")
-            img = Image.open(out_path)
-            img.load()  # 强制读取到内存
-        return img
-    except Exception as ve:
-        raise ve
-
-
-def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
-    """Remove alpha channel from an image by compositing onto a background color."""
-    if img.mode == "RGBA":
-        background = Image.new("RGB", img.size, bg_color)
-        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
-        return background
-    elif img.mode != "RGB" and img.mode != "L":
-        return img.convert("RGB")
-    return img
 
 
 def pdf2script(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None):

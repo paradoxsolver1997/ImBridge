@@ -35,13 +35,13 @@ class FileDetailsFrame(BaseFrame):
         self.detail_frame.pack(fill="x", expand=False, padx=10, pady=(0, 4))
 
         # 预览Frame
-        self.preview_frame = PreviewFrame(main_frame, title="Preview", width=160, height=160)
+        self.preview_frame = PreviewFrame(main_frame, title="Input Preview", width=160, height=160)
         self.preview_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         # 绑定自定义翻页事件
         self.preview_frame.bind('<<PreviewPageChanged>>', self._on_preview_page_changed)
         
         # 关闭按钮
-        btn = ttk.Button(main_frame, text="关闭", command=self.list_window.withdraw())
+        btn = ttk.Button(main_frame, text="Withdraw", command=self.list_window.withdraw)
         btn.pack(pady=(0, 6), anchor="e")
         self.populate_file_list([])
 
@@ -73,7 +73,7 @@ class FileDetailsFrame(BaseFrame):
                 self.tree.selection_set(file_list[0])
                 self.show_details(file_list[0])
                 # 预览Frame同步到第一个文件
-                self._sync_preview_to_file(file_list[0])
+                # self._sync_preview_to_file(file_list[0])
     
     def _sync_preview_to_file(self, file_path):
         """

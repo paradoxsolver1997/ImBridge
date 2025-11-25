@@ -17,6 +17,48 @@ from src.utils.commons import get_script_size, get_svg_size
 from src.utils.transformer import change_bbox, update_matrix
 
 
+def display_crop(img, crop_box, eps_coordinate=False, box_color="white", box_width=3, mask_opacity=120):
+    """
+    在图像上绘制裁剪框，并在其外部加半透明遮罩。
+    
+    参数:
+        img: Image.Image
+        crop_box: (x, y, w, h) - 左上角 + 宽高
+        box_color: 裁剪框颜色 (默认白色更清晰)
+        box_width: 边框宽度
+        mask_opacity: 遮罩透明度，范围 0-255（越大越暗）
+    """
+    x, y, x2, y2 = crop_box
+    if eps_coordinate:
+        # EPS 坐标系，y 轴向上
+        y, y2 = img.height - y2, img.height - y
+
+    # 复制一份图像，不修改原图
+    img_out = img.copy().convert("RGBA")
+
+    # 创建一个与图像大小相同的透明图层，用于添加遮罩
+    mask_layer = Image.new("RGBA", img_out.size, (0, 0, 0, 0))
+    mask_draw = ImageDraw.Draw(mask_layer)
+
+    # 半透明遮罩（框外）
+    width, height = img_out.size
+
+    # 绘制四个方向的遮罩
+    mask_draw.rectangle([(0, 0), (width, y)], fill=(0, 0, 0, mask_opacity))               # 上
+    mask_draw.rectangle([(0, y2), (width, height)], fill=(0, 0, 0, mask_opacity))        # 下
+    mask_draw.rectangle([(0, y), (x, y2)], fill=(0, 0, 0, mask_opacity))                 # 左
+    mask_draw.rectangle([(x2, y), (width, y2)], fill=(0, 0, 0, mask_opacity))            # 右
+
+    # 将遮罩层叠加到图像
+    img_out = Image.alpha_composite(img_out, mask_layer)
+
+    # 最后画裁剪框（为了更突出，建议白色）
+    draw = ImageDraw.Draw(img_out)
+    draw.rectangle([x, y, x2, y2], outline=box_color, width=box_width)
+
+    return img_out.convert("RGB")
+
+
 def crop_image(
     in_path: str,
     out_dir: str,
@@ -136,8 +178,6 @@ def crop_pdf(
                             rect = page.rect
                             orig_width = rect.width
                             orig_height = rect.height
-                            print(f"[vector] Original PDF page size: {orig_width} x {orig_height} pt")
-                            print(f"[vector] Applying crop box: {crop_box}")
                             new_page = new_doc.new_page(width=orig_width, height=orig_height)
                             new_page.show_pdf_page(
                                 new_page.rect,  # 目标矩形
@@ -211,8 +251,15 @@ def crop_script(
                 # 先平移到原点，再裁剪，再平移回去
                 # 否则，可能出现负坐标，导致部分查看器无法正确显示
                 # 因此，必须分两步修改矩阵和 BoundingBox，不能合并为一步
+                change_bbox(
+                    in_path=in_path, 
+                    out_path=out_path,
+                    old_bbox=(0, 0, orig_width, orig_height),
+                    new_bbox=(0, 0, max(orig_width, orig_height), max(orig_width, orig_height)), 
+                    logger=logger
+                )
                 update_matrix(
-                    out_path, 
+                    in_path, 
                     out_path, 
                     translate=[0, crop_box[3] - sz[1]],  # y 方向平移
                 )
@@ -228,10 +275,8 @@ def crop_script(
                     out_path, 
                     translate=[-crop_box[0], -crop_box[1]],  # y 方向平移
                 )
-                
-                
             else:
-                print("[vector] Crop box invalid, skipping crop.")
+                logger.error("[vector] Crop box invalid, skipping crop.")
             
             file_preview_callback(out_path) if file_preview_callback else None
             msg = f"[vector] EPS saved to {out_path}"
@@ -241,44 +286,3 @@ def crop_script(
         msg = f"[crop] see preview frame for cropping effect"
     logger.info(msg) if logger else None
     return out_path
-
-def display_crop(img, crop_box, eps_coordinate=False, box_color="white", box_width=3, mask_opacity=120):
-    """
-    在图像上绘制裁剪框，并在其外部加半透明遮罩。
-    
-    参数:
-        img: Image.Image
-        crop_box: (x, y, w, h) - 左上角 + 宽高
-        box_color: 裁剪框颜色 (默认白色更清晰)
-        box_width: 边框宽度
-        mask_opacity: 遮罩透明度，范围 0-255（越大越暗）
-    """
-    x, y, x2, y2 = crop_box
-    if eps_coordinate:
-        # EPS 坐标系，y 轴向上
-        y, y2 = img.height - y2, img.height - y
-
-    # 复制一份图像，不修改原图
-    img_out = img.copy().convert("RGBA")
-
-    # 创建一个与图像大小相同的透明图层，用于添加遮罩
-    mask_layer = Image.new("RGBA", img_out.size, (0, 0, 0, 0))
-    mask_draw = ImageDraw.Draw(mask_layer)
-
-    # 半透明遮罩（框外）
-    width, height = img_out.size
-
-    # 绘制四个方向的遮罩
-    mask_draw.rectangle([(0, 0), (width, y)], fill=(0, 0, 0, mask_opacity))               # 上
-    mask_draw.rectangle([(0, y2), (width, height)], fill=(0, 0, 0, mask_opacity))        # 下
-    mask_draw.rectangle([(0, y), (x, y2)], fill=(0, 0, 0, mask_opacity))                 # 左
-    mask_draw.rectangle([(x2, y), (width, y2)], fill=(0, 0, 0, mask_opacity))            # 右
-
-    # 将遮罩层叠加到图像
-    img_out = Image.alpha_composite(img_out, mask_layer)
-
-    # 最后画裁剪框（为了更突出，建议白色）
-    draw = ImageDraw.Draw(img_out)
-    draw.rectangle([x, y, x2, y2], outline=box_color, width=box_width)
-
-    return img_out.convert("RGB")

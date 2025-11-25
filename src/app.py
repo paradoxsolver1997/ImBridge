@@ -62,7 +62,7 @@ class App(tk.Tk):
         bottom_frame = ttk.Frame(main_frame)
         bottom_frame.pack(side="bottom", fill="x")
 
-        self.preview_frame = PreviewFrame(bottom_frame, title="Preview", width=160, height=160)
+        self.preview_frame = PreviewFrame(bottom_frame, title="OutputPreview", width=160, height=160)
         self.preview_frame.pack(side="right", fill="y", padx=0, pady=0, expand=False)
 
         self.log_frame = LogFrame(bottom_frame, title="Log Output")
