@@ -19,6 +19,7 @@ class TransformTab(BaseTab):
         self._preview_imgtk = None
         self.output_dir = os.path.join(self.output_dir, "transform_output")
         self.mode_var = tk.IntVar(value=1)
+        self.mode_var.trace_add("write", lambda *args: self.on_transform())
         self.build_content()
         self.update_mode()
         self.on_files_var_changed()
@@ -79,6 +80,7 @@ class TransformTab(BaseTab):
         ).pack(side="left", padx=(6, 8))
         
         self.scale_x_factor_var = tk.DoubleVar(value=1.0)
+        self.scale_x_factor_var.trace_add("write", lambda *args: self.on_transform())
         self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_x_factor_var,
@@ -89,6 +91,7 @@ class TransformTab(BaseTab):
         self.scale_x_factor_labeled_entry.pack(side="left", padx=(4, 4))
 
         self.scale_y_factor_var = tk.DoubleVar(value=1.0)
+        self.scale_y_factor_var.trace_add("write", lambda *args: self.on_transform())
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_y_factor_var,
@@ -123,6 +126,7 @@ class TransformTab(BaseTab):
             width=6,
         )
         self.width_entry.pack(side="left", padx=(6, 2))
+        self.width_entry.var.trace_add("write", lambda *args: self.on_transform())
 
         self.height_var = tk.IntVar(value=1024)
         self.height_entry = LabeledValidatedEntry(
@@ -133,7 +137,7 @@ class TransformTab(BaseTab):
             width=6,
         )
         self.height_entry.pack(side="left", padx=(2, 2))
-
+        self.height_var.trace_add("write", lambda *args: self.on_transform())
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
@@ -178,10 +182,11 @@ class TransformTab(BaseTab):
 
         self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
         self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(2,2))
+        self.flip_horizontal_check.var.trace_add("write", lambda *args: self.on_transform())
 
         self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,2))
-        
+        self.flip_vertical_check.var.trace_add("write", lambda *args: self.on_transform())
 
         rotate_frame = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
         rotate_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
@@ -197,7 +202,7 @@ class TransformTab(BaseTab):
             width=6
         )
         self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
-
+        self.rotate_angle_var.trace_add("write", lambda *args: self.on_transform())
 
         control_frame = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
         control_frame.pack(side="left", padx=8, pady=0, fill="y",expand=True)
@@ -208,7 +213,7 @@ class TransformTab(BaseTab):
         ttk.Button(
             preview_btn_row,
             text="Confirm",
-            command=lambda: self.on_resize(save_flag=False)
+            command=lambda: self.on_transform(save_flag=False)
         ).pack(side="right", padx=(2, 8))
 
         save_btn_row = ttk.Frame(control_frame)
@@ -216,7 +221,7 @@ class TransformTab(BaseTab):
         ttk.Button(
             save_btn_row,
             text="Save",
-            command=lambda: self.on_resize(save_flag=True)
+            command=lambda: self.on_transform(save_flag=True)
         ).pack(side="left", padx=8)
 
 
@@ -239,7 +244,7 @@ class TransformTab(BaseTab):
             self.height_entry.deactivate()
 
 
-    def on_resize(self, save_flag=False):
+    def on_transform(self, save_flag=False):
 
         file_list = self.io_frame.load_file_list()
         if not file_list:
@@ -344,6 +349,13 @@ class TransformTab(BaseTab):
                 self.blur_radius_entry.activate()
                 self.median_size_entry.activate()
 
+            self.sharpness_entry.var.set(5.0)
+            self.blur_radius_entry.var.set(1.0)
+            self.median_size_entry.var.set(3)
+
+            self.scale_x_factor_var.set(1.0)
+            self.scale_y_factor_var.set(1.0)
+
             if ext == '.svg':
                 sz = get_svg_size(file)
             elif ext in script_formats:
@@ -362,4 +374,8 @@ class TransformTab(BaseTab):
             else:
                 self.flip_horizontal_check.activate()
                 self.flip_vertical_check.activate()
+            self.flip_horizontal_check.var.set(False)
+            self.flip_vertical_check.var.set(False)
+            self.rotate_angle_var.set(0)
+        self.on_transform(save_flag=False)
             

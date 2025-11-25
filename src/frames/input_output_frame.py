@@ -137,13 +137,13 @@ class InputOutputFrame(BaseFrame):
             if self.list_window.winfo_exists():
                 # 重新加载文件列表
                 self.file_details_frame.populate_file_list(self.load_file_list())
-                self.logger.info("File details frame refreshed due to file list change.")
+                # self.logger.debug("File details frame refreshed due to file list change.")
 
     def load_file_list(self):
         try:
             file_list = [f for f in self.files_var.get().strip().split("\n") if f.strip()]
             if not file_list or not all(os.path.isfile(f) for f in file_list):
-                self.logger.error("No valid input file selected.")
+                # self.logger.debug("No valid input file selected.")
                 return
             return file_list
         except Exception as e:
