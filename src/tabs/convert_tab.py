@@ -231,8 +231,5 @@ class ConvertTab(BaseTab):
         else:
             self.quality_labeled_entry.deactivate()
 
-        file_list = self.io_frame.files_var.get().strip().split("\n")
-        if file_list and os.path.isfile(file_list[0]):
-            self.io_frame.show_file_list()
 
         

@@ -141,6 +141,5 @@ class InkTab(BaseTab):
         
 
     def on_files_var_changed(self, *args):
-        file = self.io_frame.files_var.get().strip().split("\n")[0]
-        if file and os.path.isfile(file):
-            self.io_frame.show_file_list()
+        self.preview_frame.clear_preview()
+        

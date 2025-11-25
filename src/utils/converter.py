@@ -198,7 +198,7 @@ def raster2svg(in_path: str, out_dir: str, logger: Optional[Logger] = None) -> O
         return None
 
 
-def svg2raster(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None, **kwargs) -> Optional[str]:
+def svg2raster(in_path: str, out_dir: str, out_fmt: str, dpi: int = None, logger: Optional[Logger] = None, **kwargs) -> Optional[str]:
     try:
         import cairosvg
     except Exception as e:
@@ -215,14 +215,14 @@ def svg2raster(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         if out_fmt == ".png":
-            cairosvg.svg2png(url=in_path, write_to=out_path)
+            cairosvg.svg2png(url=in_path, write_to=out_path, dpi=dpi)
         elif out_fmt in (".jpg", ".jpeg"):
             tmp_png = os.path.join(tmp_dir, "temp.png")
-            cairosvg.svg2png(url=in_path, write_to=tmp_png)
+            cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
             Image.open(tmp_png).convert("RGB").save(out_path, quality=kwargs.get("quality", 95))
         elif out_fmt == ".tiff":
             tmp_png = os.path.join(tmp_dir, "temp.png")
-            cairosvg.svg2png(url=in_path, write_to=tmp_png)
+            cairosvg.svg2png(url=in_path, write_to=tmp_png, dpi=dpi)
             Image.open(tmp_png).save(out_path, format="TIFF")
         else:
             raise RuntimeError(f"Unsupported bitmap format: {out_fmt}")

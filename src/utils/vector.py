@@ -94,13 +94,14 @@ def show_script(in_path: str, dpi: int = 96) -> Image.Image:
         raise ve
 
 
-def show_svg(in_path: str) -> Image.Image:
+def show_svg(in_path: str, dpi: int = None) -> Image.Image:
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            out_path = cv.svg2raster(in_path, tmp_dir, out_fmt=".png")
+            out_path = cv.svg2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
             img = Image.open(out_path)
             img.load()  # 强制读取到内存
             img = rst.remove_alpha_channel(img)
+            print(f"Loaded SVG raster image size: {img.size}")
         return img
     except Exception as ve:
         raise ve
@@ -135,7 +136,7 @@ def get_pdf_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
             page = doc[0]
             width_pt = page.rect.width
             height_pt = page.rect.height
-        return width_pt, height_pt, "pt"
+        return (width_pt, height_pt), "pt"
     except Exception:
             raise RuntimeError("Failed to parse PDF dimensions.")
 
@@ -156,7 +157,7 @@ def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
                     break
             else:
                 width_pt = height_pt = None
-        return width_pt, height_pt, "pt"
+        return (width_pt, height_pt), "pt"
     except Exception:
         raise RuntimeError("Failed to parse PS/EPS dimensions.")
 

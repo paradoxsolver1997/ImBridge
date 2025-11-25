@@ -62,7 +62,7 @@ class App(tk.Tk):
         bottom_frame = ttk.Frame(main_frame)
         bottom_frame.pack(side="bottom", fill="x")
 
-        self.preview_frame = PreviewFrame(bottom_frame, title="OutputPreview", width=160, height=160)
+        self.preview_frame = PreviewFrame(bottom_frame, title="Output Preview", width=160, height=160)
         self.preview_frame.pack(side="right", fill="y", padx=0, pady=0, expand=False)
 
         self.log_frame = LogFrame(bottom_frame, title="Log Output")
@@ -102,6 +102,7 @@ class App(tk.Tk):
         if hasattr(current_tab, "io_frame") and hasattr(current_tab.io_frame, "files_var"):
             current_tab.io_frame.files_var.set(value="")
             self.file_details_frame.populate_file_list([])
+            self.file_details_frame.show_details(None)
 
     def hide_list_window(self):
         self.list_window.withdraw()

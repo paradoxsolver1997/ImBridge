@@ -30,7 +30,7 @@ class InputOutputFrame(BaseFrame):
         input_row = ttk.Frame(frame)
         input_row.pack(fill="x", padx=0, pady=(4, 2))
         self.files_var = tk.StringVar()
-        self.files_var.trace_add("write", self.refresh_file_list)
+        self.files_var.trace_add("write", self.show_file_list)
             
         ttk.Label(
             input_row, 
@@ -123,11 +123,13 @@ class InputOutputFrame(BaseFrame):
             self.logger.error(f"Failed to open folder:\n{e}")
 
 
-    def show_file_list(self):
-        self.list_window.geometry(self.set_list_geometry())
-        self.list_window.deiconify() 
-        # Initialize size, scaling, and scrollbars
-        self.refresh_file_list()
+    def show_file_list(self, *args):
+        if self.set_list_geometry() is not None:
+            if self.files_var.get().strip().split("\n")[0]:
+                self.list_window.geometry(self.set_list_geometry())
+                self.list_window.deiconify() 
+                # Initialize size, scaling, and scrollbars
+                self.refresh_file_list()
 
     
     def refresh_file_list(self, *args):
@@ -168,4 +170,7 @@ class InputOutputFrame(BaseFrame):
         # Make the popup window stick to the right side of the main window
         popup_x = main_x + main_w
         popup_y = main_y
-        return f"{popup_w}x{popup_h}+{popup_x}+{popup_y}"
+        if main_x > 0 and main_y > 0:
+            return f"{popup_w}x{popup_h}+{popup_x}+{popup_y}"
+        else:
+            return None

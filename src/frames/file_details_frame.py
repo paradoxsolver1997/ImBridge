@@ -41,10 +41,8 @@ class FileDetailsFrame(BaseFrame):
         # Close button
         btn = ttk.Button(main_frame, text="Withdraw", command=self.list_window.withdraw)
         btn.pack(padx=(8, 8), pady=(0, 6), anchor="e")
-        self.populate_file_list([])
 
     def populate_file_list(self, file_list=[]):
-        
         # --- Preview Frame queue initialization ---
         self.preview_frame.clear_file_queue()
         for item in self.tree.get_children():
@@ -123,7 +121,7 @@ class FileDetailsFrame(BaseFrame):
         # PDF/EPS/PS: display physical dimensions (cm)
         elif typ in ('PDF'):
             try:
-                width_pt, height_pt = vec.get_pdf_size(path)
+                (width_pt, height_pt), _ = vec.get_pdf_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
@@ -134,7 +132,7 @@ class FileDetailsFrame(BaseFrame):
                 meta['Size'] = 'N/A'
         elif typ in ('EPS','PS'):
             try:
-                width_pt, height_pt = vec.get_script_size(path)
+                (width_pt, height_pt), _ = vec.get_script_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
@@ -184,6 +182,9 @@ class FileDetailsFrame(BaseFrame):
     def show_details(self, path):
         for widget in self.detail_frame.winfo_children():
             widget.destroy()
+        if path is None:
+            return
+
         if not os.path.isfile(path):
             ttk.Label(self.detail_frame, text="File does not exist", foreground="red").pack(anchor="w")
             return

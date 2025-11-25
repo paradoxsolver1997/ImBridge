@@ -22,8 +22,6 @@ class CropTab(BaseTab):
         self.output_dir = os.path.join(self.output_dir, "crop_output")
         self.mode_var = tk.IntVar(value=1)
         self.build_content()
-        self.on_files_var_changed()
-        self.on_crop(save_flag=False)
 
     def build_content(self):
 
@@ -146,7 +144,7 @@ class CropTab(BaseTab):
                 self.io_frame.out_dir_var.get(),
                 crop_box=crop_box,
                 save_image=save_flag,
-                image_preview_callback=self.preview_frame.show_image, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger
             )
         elif ext == '.svg':
@@ -155,7 +153,7 @@ class CropTab(BaseTab):
                 self.io_frame.out_dir_var.get(),
                 crop_box=crop_box,
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger
             )
         elif ext == '.pdf':
@@ -164,7 +162,7 @@ class CropTab(BaseTab):
                 self.io_frame.out_dir_var.get(),
                 crop_box=crop_box,
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger,
                 kwargs=params
             )
@@ -184,9 +182,9 @@ class CropTab(BaseTab):
 
 
     def on_files_var_changed(self, *args):
+        self.preview_frame.clear_preview()
         file = self.io_frame.files_var.get().strip().split("\n")[0]
         if file and os.path.isfile(file):
-            self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
 
             unit = 'pt' if ext in script_formats else 'px'
@@ -208,4 +206,3 @@ class CropTab(BaseTab):
             self.crop_y_var.set(value=0)
             self.crop_w_var.set(value=int(sz[0]))
             self.crop_h_var.set(value=int(sz[1]))
-            self.on_crop(save_flag=False)

@@ -20,10 +20,9 @@ class TransformTab(BaseTab):
         self._preview_imgtk = None
         self.output_dir = os.path.join(self.output_dir, "transform_output")
         self.mode_var = tk.IntVar(value=1)
-        self.mode_var.trace_add("write", lambda *args: self.on_transform())
+        #self.mode_var.trace_add("write", lambda *args: self.on_transform())
         self.build_content()
         self.update_mode()
-        self.on_files_var_changed()
 
     def build_content(self):
 
@@ -81,7 +80,7 @@ class TransformTab(BaseTab):
         ).pack(side="left", padx=(6, 8))
         
         self.scale_x_factor_var = tk.DoubleVar(value=1.0)
-        self.scale_x_factor_var.trace_add("write", lambda *args: self.on_transform())
+        #self.scale_x_factor_var.trace_add("write", lambda *args: self.on_transform())
         self.scale_x_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_x_factor_var,
@@ -92,7 +91,7 @@ class TransformTab(BaseTab):
         self.scale_x_factor_labeled_entry.pack(side="left", padx=(4, 4))
 
         self.scale_y_factor_var = tk.DoubleVar(value=1.0)
-        self.scale_y_factor_var.trace_add("write", lambda *args: self.on_transform())
+        #self.scale_y_factor_var.trace_add("write", lambda *args: self.on_transform())
         self.scale_y_factor_labeled_entry = LabeledValidatedEntry(
             frm_2,
             var=self.scale_y_factor_var,
@@ -127,7 +126,7 @@ class TransformTab(BaseTab):
             width=6,
         )
         self.width_entry.pack(side="left", padx=(6, 2))
-        self.width_entry.var.trace_add("write", lambda *args: self.on_transform())
+        #self.width_entry.var.trace_add("write", lambda *args: self.on_transform())
 
         self.height_var = tk.IntVar(value=1024)
         self.height_entry = LabeledValidatedEntry(
@@ -138,7 +137,7 @@ class TransformTab(BaseTab):
             width=6,
         )
         self.height_entry.pack(side="left", padx=(2, 2))
-        self.height_var.trace_add("write", lambda *args: self.on_transform())
+        #self.height_var.trace_add("write", lambda *args: self.on_transform())
         # Row 2: Settings
 
         parameter_row = ttk.Frame(self)
@@ -183,11 +182,11 @@ class TransformTab(BaseTab):
 
         self.flip_horizontal_check = CheckFrame(flip_frame, title='Left-Right')
         self.flip_horizontal_check.pack(side="top", fill="x", padx=6, pady=(12,2))
-        self.flip_horizontal_check.var.trace_add("write", lambda *args: self.on_transform())
+        #self.flip_horizontal_check.var.trace_add("write", lambda *args: self.on_transform())
 
         self.flip_vertical_check = CheckFrame(flip_frame, title='Top-Bottom')
         self.flip_vertical_check.pack(side="top", anchor="w", padx=6, pady=(0,2))
-        self.flip_vertical_check.var.trace_add("write", lambda *args: self.on_transform())
+        #self.flip_vertical_check.var.trace_add("write", lambda *args: self.on_transform())
 
         rotate_frame = ttk.LabelFrame(parameter_row, text="Rotate", style="Bold.TLabelframe")
         rotate_frame.pack(side="left", padx=8, pady=0, fill="both",expand=True)
@@ -204,7 +203,7 @@ class TransformTab(BaseTab):
             width=6
         )
         self.rotate_angle_combo.pack(side="top", anchor="w", padx=6, pady=(0,8))
-        self.rotate_angle_var.trace_add("write", lambda *args: self.on_transform())
+        #self.rotate_angle_var.trace_add("write", lambda *args: self.on_transform())
 
         control_frame = ttk.LabelFrame(parameter_row, text="Control", style="Bold.TLabelframe")
         control_frame.pack(side="left", padx=8, pady=0, fill="both",expand=True)
@@ -225,8 +224,6 @@ class TransformTab(BaseTab):
             text="Save",
             command=lambda: self.on_transform(save_flag=True)
         ).pack(padx=8)
-
-
 
     def update_mode(self):
         if self.mode_var.get() == 2:
@@ -308,6 +305,7 @@ class TransformTab(BaseTab):
                 logger=self.logger, 
                 **params)
         elif ext == '.svg':
+            params.update({"dpi": self.preview_frame.dpi})
             sc.transform_svg(
                 in_path, 
                 self.io_frame.out_dir_var.get(),
@@ -341,7 +339,6 @@ class TransformTab(BaseTab):
     def on_files_var_changed(self, *args):
         file = self.io_frame.files_var.get().strip().split("\n")[0]
         if file and os.path.isfile(file):
-            self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
             if ext in vector_formats:
                 self.sharpness_entry.deactivate()
@@ -383,5 +380,4 @@ class TransformTab(BaseTab):
             self.flip_horizontal_check.var.set(False)
             self.flip_vertical_check.var.set(False)
             self.rotate_angle_var.set(0)
-        self.on_transform(save_flag=False)
             

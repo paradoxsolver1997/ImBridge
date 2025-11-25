@@ -85,10 +85,15 @@ class PreviewFrame(BaseFrame):
         self.clear_preview()
         self._update_page_label()
 
-    def show_image(self, image, img_size=None, unit='px'):
+    def show_image(self, image, unit='px'):
         try:
             img = image.copy()
-            orig_size = img_size if img_size else img.size
+            if unit == 'pt':
+                orig_size = (int(img.size[0] / self.dpi * 72), int(img.size[1] / self.dpi * 72))
+            elif unit == 'px':
+                orig_size = img.size
+            else:
+                raise ValueError("Unsupported unit for image size.")
             self.update_idletasks()
             frame_w = self.preview_label.winfo_width()
             frame_h = self.preview_label.winfo_height()
@@ -119,32 +124,30 @@ class PreviewFrame(BaseFrame):
     def show_file(self, img_path, process_callback=None):
         try:
             ext = os.path.splitext(img_path)[1].lower()
-            if ext in script_formats:
-                img = vec.show_script(img_path, dpi=self.dpi)
-                img = process_callback(img.copy()) if process_callback else img
-                sz, unit = vec.get_script_size(img_path)
-                self.show_image(img, img_size=sz, unit=unit)
-            elif ext == ".pdf":
+            if ext == ".pdf":
                 img = vec.show_script(img_path)
                 img = process_callback(img) if process_callback else img
                 sz, unit = vec.get_pdf_size(img_path)
-                self.show_image(img, img_size=sz, unit=unit)
+                self.show_image(img, unit=unit)
+            elif ext in (".eps", ".ps"):
+                img = vec.show_script(img_path, dpi=self.dpi)
+                img = process_callback(img.copy()) if process_callback else img
+                sz, unit = vec.get_script_size(img_path)
+                self.show_image(img, unit=unit)
             elif ext == ".svg":
-                img = vec.show_svg(img_path)
+                img = vec.show_svg(img_path, dpi=self.dpi)
                 img = process_callback(img) if process_callback else img
                 sz, unit = vec.get_svg_size(img_path)
-                self.show_image(img, img_size=sz, unit=unit)
+                self.show_image(img, unit=unit)
             elif ext in heif_formats:
                 register_heif_opener()
                 img = Image.open(img_path)
                 img = process_callback(img) if process_callback else img
-                sz, = img.size
-                self.show_image(img, img_size=sz, unit='px')
+                self.show_image(img, unit='px')
             elif ext in bitmap_formats:
                 img = Image.open(img_path)
                 img = process_callback(img) if process_callback else img
-                sz, = img.size
-                self.show_image(img, img_size=sz, unit='px')
+                self.show_image(img, unit='px')
             else:
                 # Unsupported format
                 if hasattr(self, "preview_label"):

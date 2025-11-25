@@ -46,14 +46,14 @@ class ToolTab(BaseTab):
             status = "✔" if check_tool(key) else "✘"
             color = "red" if status == "✘" else "green"
             ttk.Label(sub_row, text=f"{status}", style="Info.TLabel", foreground=color).pack(
-                side="left", padx=(6, 0), pady=1
+                side="left", padx=(6, 0), pady=0
             )
             ttk.Label(sub_row, text=f"{label}").pack(
-                side="left", padx=(0, 8), pady=1
+                side="left", padx=(0, 8), pady=0
             )
             # 为每个link创建独立的变量
             link = ttk.Label(sub_row, text=homepage, foreground="blue", cursor="hand2")
-            link.pack(side="left", anchor="w", padx=0, pady=1)
+            link.pack(side="left", anchor="w", padx=0, pady=0)
             self.render_hyperlink_label(link)
             # 使用lambda捕获当前循环的homepage值
             link.bind("<Button-1>", lambda e, url=homepage: webbrowser.open(url))
@@ -68,13 +68,13 @@ class ToolTab(BaseTab):
             status = "✔" if check_tool(key) else "✘"
             color = "red" if status == "✘" else "green"
             ttk.Label(sub_row, text=f"{status}", style="Info.TLabel", foreground=color).pack(
-                side="left", padx=(6, 0), pady=1
+                side="left", padx=(6, 0), pady=0
             )
             ttk.Label(sub_row, text=f"{label}").pack(
-                side="left", padx=(0, 8), pady=1
+                side="left", padx=(0, 8), pady=0
             )
             link = ttk.Label(sub_row, text=homepage, foreground="blue", cursor="hand2")
-            link.pack(side="left", anchor="w", padx=0, pady=1)
+            link.pack(side="left", anchor="w", padx=0, pady=0)
             self.render_hyperlink_label(link)
             # 使用lambda捕获当前循环的homepage值
             link.bind("<Button-1>", lambda e, url=homepage: webbrowser.open(url))
