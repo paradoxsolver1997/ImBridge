@@ -1,10 +1,12 @@
-import os
+import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
+import os
 import webbrowser
+
 from src.tabs.base_tab import BaseTab
 from src.frames.title_frame import TitleFrame
-import tkinter as tk
+
 
 docs_dir = os.path.abspath(
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs")
@@ -67,46 +69,10 @@ class AboutTab(BaseTab):
         self.thanks_frame = ttk.LabelFrame(self, text="Special Thanks", style="Bold.TLabelframe")
         self.thanks_frame.pack(fill="x", padx=(8, 8), pady=(4, 4))
 
-        # Ghostscript
         self.row_1 = ttk.Frame(self.thanks_frame)
         self.row_1.pack(side="top", fill="x", padx=8, pady=(2, 2))
-        self.row_1_label = ttk.Label(self.row_1, text="Ghostscript:")
-        self.row_1_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
-        self.row_1_link = ttk.Label(self.row_1, text="https://www.ghostscript.com/", foreground="blue", cursor="hand2")
-        self.row_1_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
-        self.render_hyperlink_label(self.row_1_link)
-        self.row_1_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.ghostscript.com/"))
-
-        # pstoedit
-        self.row_2 = ttk.Frame(self.thanks_frame)
-        self.row_2.pack(side="top", fill="x", padx=8, pady=(2, 2))
-        self.row_2_label = ttk.Label(self.row_2, text="pstoedit:")
-        self.row_2_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
-        self.row_2_link = ttk.Label(self.row_2, text="http://www.pstoedit.net/", foreground="blue", cursor="hand2")
-        self.row_2_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
-        self.render_hyperlink_label(self.row_2_link)
-        self.row_2_link.bind("<Button-1>", lambda e: webbrowser.open("http://www.pstoedit.net/"))
-
-        # Potrace
-        self.row_3 = ttk.Frame(self.thanks_frame)
-        self.row_3.pack(side="top", fill="x", padx=8, pady=(2, 4))
-        self.row_3_label = ttk.Label(self.row_3, text="Potrace:")
-        self.row_3_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
-        self.row_3_link = ttk.Label(self.row_3, text="http://potrace.sourceforge.net/", foreground="blue", cursor="hand2")
-        self.row_3_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
-        self.render_hyperlink_label(self.row_3_link)
-        self.row_3_link.bind("<Button-1>", lambda e: webbrowser.open("http://potrace.sourceforge.net/"))
-
-        # Potrace
-        self.row_4 = ttk.Frame(self.thanks_frame)
-        self.row_4.pack(side="top", fill="x", padx=8, pady=(2, 4))
-        self.row_4_label = ttk.Label(self.row_4, text="libcairo-2.dll:")
-        self.row_4_label.pack(side="left", anchor="w", padx=(0, 0), pady=(0, 0))
-        self.row_4_link = ttk.Label(self.row_4, text="https://www.cairographics.org/download/", foreground="blue", cursor="hand2")
-        self.row_4_link.pack(side="left", anchor="w", padx=0, pady=(0, 0))
-        self.render_hyperlink_label(self.row_4_link)
-        self.row_4_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.cairographics.org/download/"))
-
+        self.row_1_label = ttk.Label(self.row_1, text="See the Dependencies★ tab")
+        self.row_1_label.pack(side="left", anchor="w", padx=(0, 0), pady=(2, 2))
 
         self.title_frame.pack(fill="x", padx=(8, 8), pady=(2, 2))
         self.help_frame = ttk.LabelFrame(

@@ -1,10 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, filedialog
-import os
-import logging
+from tkinter import ttk
 from src.frames.base_frame import BaseFrame
-import subprocess
-from src.frames.file_details_frame import FileDetailsFrame
 
 class CheckFrame(BaseFrame):
     

@@ -7,13 +7,13 @@ from src.utils.logger import Logger
 
 from src.frames.preview_frame import PreviewFrame
 from src.frames.log_frame import LogFrame
+from src.frames.file_details_frame import FileDetailsFrame
 
 from src.tabs.about_tab import AboutTab
 from src.tabs.ink_tab import InkTab
 from src.tabs.transform_tab import TransformTab
 from src.tabs.tool_tab import ToolTab
-from src.tabs.convertion_tab import ConvertionTab
-from src.frames.file_details_frame import FileDetailsFrame
+from src.tabs.convert_tab import ConvertTab
 from src.tabs.crop_tab import CropTab
 
 
@@ -26,7 +26,7 @@ def init_styles():
     style.configure("TButton", font=("Segoe UI", 10))
     style.configure("TLabel", font=("Segoe UI", 10))
     style.configure("TEntry", font=("Segoe UI", 10))
-    style.configure("Info.TLabel", font=("Arial", 20), foreground="blue")
+    style.configure("Info.TLabel", font=("Arial", 14), foreground="blue")
     # You can continue to add other control styles
 
 
@@ -71,14 +71,14 @@ class App(tk.Tk):
         self.logger.set_gui_widget(self.log_frame.log_text)
 
         self.list_window = tk.Toplevel(self)
-        self.list_window.title(f"文件详细信息 - {self.title}")
+        self.list_window.title(f"Detailed File Info")
         self.list_window.protocol("WM_DELETE_WINDOW", self.hide_list_window)
         self.file_details_frame = FileDetailsFrame(self.list_window)
         self.file_details_frame.pack(fill="both", expand=True)
         self.list_window.withdraw()
 
         # Create and add tabs
-        convertion_tab = ConvertionTab(nb)
+        convertion_tab = ConvertTab(nb)
         nb.add(convertion_tab, text=" Convert ")
         enhance_tab = InkTab(nb)
         nb.add(enhance_tab, text=" Ink Magic ")

@@ -1,13 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+
 from src.tabs.base_tab import BaseTab
-import src.utils.cropper as cr
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 from src.utils.commons import bitmap_formats, script_formats
-from src.utils.commons import get_script_size, get_svg_size, get_raster_size
+
+import src.utils.vector as vec
+import src.utils.raster as rst
+import src.utils.cropper as cr
 
 
 class CropTab(BaseTab):
@@ -53,7 +56,7 @@ class CropTab(BaseTab):
         parameter_row = ttk.Frame(self)
         parameter_row.pack(padx=(0, 0), pady=(4, 4), fill="x")
 
-        frm_5 = ttk.LabelFrame(parameter_row, text="Parameters", style="Bold.TLabelframe")
+        frm_5 = ttk.LabelFrame(parameter_row, text="Crop Settings", style="Bold.TLabelframe")
         frm_5.pack(side="left", padx=8, pady=8, fill="x", expand=True)
 
         cord_row = ttk.Frame(frm_5)
@@ -120,7 +123,7 @@ class CropTab(BaseTab):
 
         file_list = self.io_frame.load_file_list()
         if not file_list:
-            # 这里可以弹窗、日志或直接 return
+            # Here you can show a popup, log, or simply return
             return
         
         crop_box = (
@@ -130,7 +133,7 @@ class CropTab(BaseTab):
             self.crop_y_var.get() + self.crop_h_var.get(),
         )
 
-        # 根据文件类型选择不同的resize方法
+        # Choose different crop methods based on file type
         in_path = file_list[0]
         ext = os.path.splitext(in_path)[1].lower()
         self.preview_frame.clear_preview()
@@ -182,7 +185,7 @@ class CropTab(BaseTab):
 
     def on_files_var_changed(self, *args):
         file = self.io_frame.files_var.get().strip().split("\n")[0]
-        if file:
+        if file and os.path.isfile(file):
             self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
 
@@ -193,12 +196,11 @@ class CropTab(BaseTab):
             self.crop_y_entry.label.config(text=f"Y ({unit})")
 
             if ext == '.svg':
-                sz = get_svg_size(file)
+                sz = vec.get_svg_size(file)
             elif ext in script_formats:
-                sz = get_script_size(file)
+                sz = vec.get_script_size(file)
             else:
-                sz = get_raster_size(file)
-
+                sz = rst.get_raster_size(file)
             self.crop_x_var.set(value=0)
             self.crop_y_var.set(value=0)
             self.crop_w_var.set(value=int(sz[0]))

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 import shutil
+
 import src.utils.converter as cv
 from src.utils.commons import bitmap_formats, script_formats
 
@@ -11,12 +12,12 @@ from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 
 
-class ConvertionTab(BaseTab):
+class ConvertTab(BaseTab):
 
     def __init__(self, parent, title=None, logger=None):
         super().__init__(parent, title=title, logger=logger)
         self._preview_imgtk = None
-        self.output_dir = os.path.join(self.output_dir, "convertion_output")
+        self.output_dir = os.path.join(self.output_dir, "convert_output")
         self.build_content()
         self.on_files_var_changed()
 
@@ -31,8 +32,8 @@ class ConvertionTab(BaseTab):
         self.title_frame.pack(padx=4, pady=(4, 2), fill="x")
 
         input_filetypes=[
-                ("Images & Vectors", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.svg;*.pdf;*.eps;*.ps"),
-                ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff"),
+                ("Images & Vectors", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.heic;*.heif;*.svg;*.pdf;*.eps;*.ps"),
+                ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.heic;*.heif"),
                 ("Vectors", "*.svg;*.pdf;*.eps;*.ps"),
             ]
         parameters = {
@@ -44,6 +45,7 @@ class ConvertionTab(BaseTab):
         }
         self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
+        self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
 
         convert_row = ttk.Frame(self)
         convert_row.pack(side="top", padx=(0, 0), pady=(0, 4), fill="x", expand=True, anchor="n")
@@ -137,7 +139,7 @@ class ConvertionTab(BaseTab):
             base = os.path.splitext(os.path.basename(f))[0]
             in_ext = os.path.splitext(f)[1].lower()
 
-            # 位图 -> 位图
+            # Bitmap -> Bitmap
             if in_ext in bitmap_formats and out_ext in bitmap_formats:
                 out_path = cv.raster_convert(
                     in_path=f,
@@ -146,7 +148,7 @@ class ConvertionTab(BaseTab):
                     quality=kwargs.get('quality', 95),
                     logger=self.logger,
                 )
-            # 位图 -> 脚本(pdf/eps/ps)
+            # Bitmap -> Script (pdf/eps/ps)
             elif in_ext in bitmap_formats and out_ext in script_formats:
                 out_path = cv.raster2script(
                     in_path=f,
@@ -155,14 +157,14 @@ class ConvertionTab(BaseTab):
                     dpi=kwargs.get('dpi', 300),
                     logger=self.logger,
                 )
-            # 位图 -> svg
+            # Bitmap -> SVG
             elif in_ext in bitmap_formats and out_ext == ".svg":
                 out_path = cv.raster2svg(
                     in_path=f,
                     out_dir=out_dir,
                     logger=self.logger,
                 )
-            # 脚本(pdf/eps/ps) -> 位图
+            # Script (pdf/eps/ps) -> Bitmap
             elif in_ext in script_formats and out_ext in bitmap_formats:
                 out_path = cv.script2raster(
                     in_path=f,
@@ -171,7 +173,7 @@ class ConvertionTab(BaseTab):
                     dpi=kwargs.get('dpi', 300),
                     logger=self.logger,
                 )
-            # 脚本(pdf/eps/ps) -> 脚本(pdf/eps/ps)
+            # Script (pdf/eps/ps) -> Script (pdf/eps/ps)
             elif in_ext == ".pdf" and out_ext in [".eps", ".ps"]:
                 out_path = cv.pdf2script(
                     in_path=f,
@@ -192,14 +194,14 @@ class ConvertionTab(BaseTab):
                         out_fmt=out_ext,
                         logger=self.logger,
                     )
-            # 脚本(pdf/eps/ps) -> svg
+            # Script (pdf/eps/ps) -> SVG
             elif in_ext in script_formats and out_ext == ".svg":
                 out_path = cv.script2svg(
                     in_path=f,
                     out_dir=out_dir,
                     logger=self.logger,
                 )
-            # svg -> 位图
+            # SVG -> Bitmap
             elif in_ext == ".svg" and out_ext in bitmap_formats:
                 out_path = cv.svg2raster(
                     in_path=f,
@@ -207,7 +209,7 @@ class ConvertionTab(BaseTab):
                     out_fmt=out_ext,
                     logger=self.logger,
                 )
-            # svg -> 脚本(pdf/eps/ps)
+            # SVG -> Script (pdf/eps/ps)
             elif in_ext == ".svg" and out_ext in script_formats:
                 out_path = cv.svg2script(
                     in_path=f,
@@ -228,4 +230,9 @@ class ConvertionTab(BaseTab):
             self.quality_labeled_entry.activate()
         else:
             self.quality_labeled_entry.deactivate()
+
+        file_list = self.io_frame.files_var.get().strip().split("\n")
+        if file_list and os.path.isfile(file_list[0]):
+            self.io_frame.show_file_list()
+
         

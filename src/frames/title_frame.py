@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import ttk
 
 from src.frames.base_frame import BaseFrame

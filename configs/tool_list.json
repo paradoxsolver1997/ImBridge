@@ -19,7 +19,7 @@
     },
     {
         "key": "cairosvg",
-        "display": "cairosvg (Python)",
+        "display": "cairosvg",
         "executables": ["cairosvg"],
         "config_key": null,
         "type": "python",
@@ -46,7 +46,7 @@
     },
     {
         "key": "pymupdf",
-        "display": "PyMuPDF (fitz)",
+        "display": "PyMuPDF",
         "executables": ["fitz"],
         "config_key": null,
         "type": "python",
@@ -55,7 +55,7 @@
     },
     {
         "key": "pillow",
-        "display": "Pillow (Python)",
+        "display": "Pillow",
         "executables": ["PIL"],
         "config_key": null,
         "type": "python",
@@ -64,11 +64,20 @@
     },
     {
         "key": "pillow-heif",
-        "display": "pillow-heif (Python)",
+        "display": "pillow-heif",
         "executables": ["pillow_heif"],
         "config_key": null,
         "type": "python",
         "desc": "HEIF/HEIC image format plugin for Pillow, enables reading and writing HEIF/HEIC images in Pillow.",
         "homepage": "https://github.com/romanmoravcik/pillow-heif"
+    },
+    {
+        "key": "pdftops",
+        "display": "pdftops",
+        "executables": ["pdftops"],
+        "config_key": "pdftops_path",
+        "type": "exe",
+        "desc": "Converts PDF files to PostScript (PS) or Encapsulated PostScript (EPS) format. Part of the Xpdf or Poppler utilities.",
+        "homepage": "https://www.xpdfreader.com/pdftops-man.html"
     }
 ]

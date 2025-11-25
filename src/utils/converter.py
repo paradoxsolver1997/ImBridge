@@ -3,15 +3,20 @@ import os
 import base64
 from reportlab.pdfgen import canvas
 import subprocess
-from typing import Optional, Tuple
+from typing import Optional
 import tempfile
 import shutil
+from pillow_heif import register_heif_opener
 
 from src.utils.logger import Logger
 from src.utils.commons import check_tool
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_dir_existence
 from src.utils.commons import confirm_single_page
+
+import src.utils.raster as rst
+from src.utils.commons import heif_formats
+
 """Bitmap conversion utilities.
 
 Uses Pillow for most bitmap format conversions and pillow-heif for HEIC/HEIF decoding.
@@ -26,18 +31,6 @@ device_map = {
     ".jpeg": "jpeg",
     ".tiff": "tiff24nc",
 }
-
-
-def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
-    """Remove alpha channel from an image by compositing onto a background color."""
-    if img.mode == "RGBA":
-        background = Image.new("RGB", img.size, bg_color)
-        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
-        return background
-    elif img.mode != "RGB" and img.mode != "L":
-        return img.convert("RGB")
-    return img
-
 
 def raster_convert(
     in_path: str,
@@ -54,6 +47,8 @@ def raster_convert(
         suffix = in_fmt.lstrip(".") + "2" + out_fmt.lstrip(".")
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
         if confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+            if in_fmt in heif_formats:
+                register_heif_opener()
             img = Image.open(in_path)
             # For formats like JPEG, ensure RGB
             if img.mode in ("RGBA", "P") and out_fmt in (".jpg", ".jpeg",):
@@ -82,10 +77,12 @@ def raster2script(
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
         
         if confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+            if in_fmt in heif_formats:
+                register_heif_opener()
             img = Image.open(in_path)
             if out_fmt == ".eps":
                 # EPS embedding can use Pillow to save as EPS, ensure mode is RGB or L
-                img = remove_alpha_channel(img)
+                img = rst.remove_alpha_channel(img)
                 img.save(out_path, format="EPS", dpi=(dpi, dpi))
                 logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
                 return out_path
@@ -131,7 +128,7 @@ def script2raster(
                         "Ghostscript executable not found; provide path in config or ensure it is on PATH"
                     )
                 device = device_map.get(out_fmt, ".pngalpha")
-                # ps/eps 用 -dEPSCrop，pdf 用 -dUseCropBox
+                # ps/eps with -dEPSCrop, pdf with -dUseCropBox
                 crop_flag = "-dEPSCrop" if in_fmt in (".ps", ".eps") else "-dUseCropBox"
                 gs_cmd = [
                     gs,
@@ -157,25 +154,48 @@ def script2raster(
 
 
 def raster2svg(in_path: str, out_dir: str, logger: Optional[Logger] = None) -> Optional[str]:
-    with open(in_path, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode("ascii")
-    mime = "image/png" if in_path.lower().endswith(".png") else "image/jpeg"
-    
-    base_name = os.path.splitext(os.path.basename(in_path))[0]
-    in_fmt = os.path.splitext(in_path)[1].lower()
-    suffix = in_fmt.lstrip(".") + "2" + "svg"
-    out_path = os.path.join(out_dir, f"{base_name}_{suffix}.svg")
-    
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(
-            f"""<?xml version="1.0" standalone="no"?>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">
-                    <image href="data:{mime};base64,{b64}" x="0" y="0" width="{w}" height="{h}" />
-                    </svg>
-                    """
-        )
-    logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
-    return out_path
+    """Convert raster image to SVG by embedding as base64 PNG."""
+    try:
+        # 生成SVG
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        suffix = in_fmt.lstrip(".") + "2" + "svg"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}.svg")
+
+        if in_fmt in heif_formats:
+            register_heif_opener()
+        with Image.open(in_path) as img:
+            original_mode = img.mode
+            w, h = img.size
+
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = os.path.join(tmp_dir, "temp.png")
+                if original_mode in ('RGBA', 'LA', 'PA'):
+                    if original_mode != 'RGBA':
+                        img = img.convert('RGBA')
+                    img.save(tmp_path, 'PNG')
+                    mime_type = 'image/png'
+                else:
+                    img.convert('RGB').save(tmp_path, 'PNG')
+                    mime_type = 'image/png'
+
+                with open(tmp_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("ascii")
+        
+        if confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(
+                    f"""<?xml version="1.0" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">
+<image href="data:{mime_type};base64,{b64}" x="0" y="0" width="{w}" height="{h}" />
+</svg>"""
+                )
+            logger.info(f"Format Conversion {os.path.basename(in_path)} -> {os.path.basename(out_path)} succeeded.") if logger else None
+            return out_path
+            
+    except Exception as e:
+        logger.error(f"SVG conversion failed: {e}") if logger else None
+        return None
 
 
 def svg2raster(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None, **kwargs) -> Optional[str]:
@@ -256,16 +276,12 @@ def svg2script(in_path: str, out_dir: str, out_fmt: str, dpi: int, logger: Optio
     assert out_fmt in (".pdf", ".eps", ".ps")
 
     if confirm_dir_existence(out_dir):
-
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = os.path.join(tmp_dir, "temp" + out_fmt)
-            # SVG转目标格式到临时文件
             if out_fmt == ".pdf":
                 cairosvg.svg2pdf(url=in_path, write_to=tmp_path, dpi=dpi)
             elif out_fmt in (".eps", ".ps"):
                 cairosvg.svg2ps(url=in_path, write_to=tmp_path, dpi=dpi)
-            # Ghostscript清洗
-            # out_path, _ = script_convert(tmp_path, out_dir, out_fmt)
             base_name = os.path.splitext(os.path.basename(in_path))[0]
             in_fmt = os.path.splitext(in_path)[1].lower()
             out_fmt = out_fmt if out_fmt is not None else in_fmt
@@ -307,41 +323,42 @@ def script_convert(in_path: str, out_dir: str, out_fmt: str = None, logger: Opti
 
 def pdf2script(in_path: str, out_dir: str, out_fmt: str, logger: Optional[Logger] = None):
     """
-    使用 pdf2ps 将 PDF 转换为 PS 或 EPS。
+    Use pdf2ps to convert PDF to PS or EPS.
     
-    参数:
-        in_path (str): 输入 PDF 文件路径
-        out_path (str): 输出 PS/EPS 文件路径
-        out_fmt (str): ".ps" 或 ".eps"
+    Parameters:
+        in_path (str): Input PDF file path
+        out_path (str): Output PS/EPS file path
+        out_fmt (str): ".ps" or ".eps"
     """
-    print("CALLED!")
+    if not check_tool("pdftops"):
+        raise RuntimeError("pdftops not found in PATH; required for PDF to PS/EPS conversion")
+    pdftops = shutil.which("pdftops")
+    if not pdftops:
+        raise RuntimeError("pdftops executable not found in PATH")
+
     base_name = os.path.splitext(os.path.basename(in_path))[0]
     in_fmt = ".pdf"
     suffix = in_fmt.lstrip(".") + "2" + out_fmt.lstrip(".")
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
 
-    # 检查格式参数
+    # Check format parameter
     if out_fmt not in (".ps", ".eps"):
         raise ValueError("out_fmt must be '.ps' or '.eps'")
 
-    # 自动修正输出文件后缀
+    # Automatically correct output file suffix
     if not out_path.endswith(out_fmt):
         out_path = os.path.splitext(out_path)[0] + out_fmt
 
-    cmd = ["pdftops"]
-
-    # EPS 模式必须加 -eps
+    cmd = [pdftops]
     if out_fmt == ".eps":
         cmd.append("-eps")
-
-    # 输入/输出
     cmd.extend([in_path, out_path])
 
     try:
         subprocess.run(cmd, check=True)
-        print(f"转换完成：{out_path}")
+        logger.info(f"Conversion completed: {out_path}") if logger else None
     except subprocess.CalledProcessError as e:
-        print("转换失败:", e)
+        logger.error(f"Conversion failed: {e}") if logger else None
         raise
 
     return out_path

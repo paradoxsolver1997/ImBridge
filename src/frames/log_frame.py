@@ -1,11 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 from src.frames.base_frame import BaseFrame
-from PIL import Image, ImageTk
-import os
-import tempfile
-
-from src.utils import converter
 
 
 class LogFrame(BaseFrame):

@@ -1,20 +1,21 @@
 from PIL import Image
 import os
 import base64
-from reportlab.pdfgen import canvas
 import subprocess
-from typing import Optional, Tuple
+from typing import Optional, Dict, Any, Callable
 import tempfile
 import shutil
+import re
+import fitz  # PyMuPDF
+import numpy as np
+from xml.etree import ElementTree as ET
 
+import src.utils.converter as cv
+import src.utils.raster as rst
 from src.utils.logger import Logger
 from src.utils.commons import check_tool
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_dir_existence
-from src.utils.commons import confirm_single_page
-
-import src.utils.converter as cv
-
 
 
 pattern_cm_sim = re.compile(
@@ -98,7 +99,7 @@ def show_svg(in_path: str) -> Image.Image:
             out_path = cv.svg2raster(in_path, tmp_dir, out_fmt=".png")
             img = Image.open(out_path)
             img.load()  # 强制读取到内存
-            img = cv.remove_alpha_channel(img)
+            img = rst.remove_alpha_channel(img)
         return img
     except Exception as ve:
         raise ve
@@ -113,24 +114,23 @@ def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
 
+def get_pdf_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        with fitz.open(in_path) as doc:
+            page = doc[0]
+            width_pt = page.rect.width
+            height_pt = page.rect.height
+        return width_pt, height_pt
+    except Exception:
+            raise RuntimeError("Failed to parse PDF dimensions.")
 
 def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     """
     获取脚本类矢量文件（pdf/ps/eps）的页面尺寸，单位pt。
     支持PDF（用fitz）和PS/EPS（用BoundingBox）。
     """
-    import os
-    ext = os.path.splitext(in_path)[1].lower()
-    if ext == ".pdf":
-        import fitz
-        with fitz.open(in_path) as doc:
-            page = doc[0]
-            width_pt = page.rect.width
-            height_pt = page.rect.height
-        return width_pt, height_pt
-    elif ext in (".ps", ".eps"):
+    try:
         with open(in_path, 'r', encoding='utf-8', errors='ignore') as f:
-            import re
             bbox_pat = re.compile(r"^%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
             for line in f:
                 m = bbox_pat.match(line)
@@ -142,8 +142,8 @@ def get_script_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
             else:
                 width_pt = height_pt = None
         return width_pt, height_pt
-    else:
-        return None, None
+    except Exception:
+        raise RuntimeError("Failed to parse PS/EPS dimensions.")
 
 
 def compute_trans_matrix(
@@ -355,3 +355,171 @@ def change_bbox(
         )
 
     return new_bbox
+
+
+
+def vector_analyzer(
+    in_path: str, log_fun: Optional[Callable[[str], None]] = None
+) -> Dict[str, Any]:
+    """
+    Automatically analyze vector file types (pdf/eps/svg) and return quantitative features and types.
+    """
+
+    result = None
+    ext = os.path.splitext(in_path)[1].lower()
+    if ext == ".pdf":
+        result = pdf_analyzer(in_path)
+    elif ext == ".eps":
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            svg_path, _ = cv.script2svg(in_path, tmp_dir)
+            result = svg_analyzer(svg_path)
+    elif ext == ".svg":
+        result = svg_analyzer(in_path)
+    else:
+        raise RuntimeError(f"Unsupported vector file type: {ext}")
+    if result is not None and log_fun:
+        msg = f"[{os.path.basename(in_path)}] Type: {result['type']}, Paths: {result['num_paths']}, Images: {result['num_images']}"
+        if result["images"]:
+            img_desc = ", ".join(
+                [
+                    f"{(str(img['real_width']) if img.get('real_width') else img.get('width','?'))}x"
+                    f"{(str(img['real_height']) if img.get('real_height') else img.get('height','?'))}"
+                    for img in result["images"]
+                ]
+            )
+            msg += f", Image sizes: {img_desc}"
+        log_fun(msg)
+    return result
+
+
+def pdf_analyzer(pdf_path: str) -> Dict[str, Any]:
+    """
+    用 PyMuPDF 分析 PDF 文件的矢量/栅格内容，统计 path 和 image 数量及尺寸。
+    """
+    result = {
+        "type": "unknown",
+        "num_paths": 0,
+        "num_images": 0,
+        "images": [],
+    }
+    doc = fitz.open(pdf_path)
+    for page in doc:
+        # 统计图片
+        for img in page.get_images(full=True):
+            xref = img[0]
+            pix = fitz.Pixmap(doc, xref)
+            w, h = pix.width, pix.height
+            result["num_images"] += 1
+            result["images"].append({
+                "xref": xref,
+                "width": w,
+                "height": h,
+            })
+            pix = None  # 释放内存
+        # 统计路径
+        drawings = page.get_drawings()
+        vector_ops = [d for d in drawings if d["type"] != "image"]
+        path_count = len(vector_ops)
+
+        result["num_paths"] += path_count
+    # 类型判定
+    if result["num_images"] > 0 and result["num_paths"] > 0:
+        result["type"] = "mixed"
+    elif result["num_images"] > 0:
+        result["type"] = "raster"
+    elif result["num_paths"] > 0:
+        result["type"] = "vector"
+    return result
+
+
+def svg_analyzer(svg_path: str) -> Dict[str, Any]:
+    """
+    Analyze SVG files for pure vector, pure raster, or mixed graphics, and count paths and images.
+    For <image> tags, try to get actual pixel size from href/xlink:href if possible.
+    """
+    import io
+    result = {
+        "type": "unknown",
+        "num_paths": 0,
+        "num_images": 0,
+        "images": [],
+    }
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+    # Count paths
+    paths = root.findall(".//{http://www.w3.org/2000/svg}path")
+    result["num_paths"] = len(paths)
+    # Count images
+    images = root.findall(".//{http://www.w3.org/2000/svg}image")
+    result["num_images"] = len(images)
+    svg_dir = os.path.dirname(svg_path)
+    for img in images:
+        w = img.get("width")
+        h = img.get("height")
+        # 解析 href/xlink:href
+        href = img.get("{http://www.w3.org/1999/xlink}href") or img.get("href")
+        real_w, real_h = None, None
+        if href:
+            try:
+                if href.startswith("data:"):
+                    # Data URI
+                    header, b64data = href.split(",", 1)
+                    img_bytes = base64.b64decode(b64data)
+                    with Image.open(io.BytesIO(img_bytes)) as im:
+                        real_w, real_h = im.width, im.height
+                else:
+                    # 文件路径或URL（只尝试本地文件）
+                    img_path = os.path.join(svg_dir, href)
+                    if os.path.exists(img_path):
+                        with Image.open(img_path) as im:
+                            real_w, real_h = im.width, im.height
+            except Exception:
+                real_w, real_h = None, None
+        result["images"].append({
+            "width": w,
+            "height": h,
+            "real_width": real_w,
+            "real_height": real_h,
+            "href": href
+        })
+    # Type determination
+    if result["num_images"] > 0 and result["num_paths"] > 0:
+        result["type"] = "mixed"
+    elif result["num_images"] > 0:
+        result["type"] = "raster"
+    elif result["num_paths"] > 0:
+        result["type"] = "vector"
+    return result
+
+def trace_bmp_to_svg(
+    in_path: str, 
+    out_dir: str,
+    logger: Optional[Logger] = None
+) -> Optional[str]:
+    """
+    Convert BMP bitmap to vector graphics (eps/svg/pdf/ps) using potrace.exe.
+    Only supports grayscale or black-and-white BMP.
+    out_fmt: eps/svg/pdf/ps
+    """
+    potrace_exe = None
+    if check_tool('potrace'):
+        potrace_exe = shutil.which('potrace')
+    if not potrace_exe:
+        raise RuntimeError('potrace.exe not found in PATH; please install and configure the environment variable')
+
+    if confirm_dir_existence(out_dir):
+        out_fmt = ".svg"
+        base_name = os.path.splitext(os.path.basename(in_path))[0]
+        in_fmt = os.path.splitext(in_path)[1].lower()
+        assert in_fmt == ".bmp"
+        suffix = "traced"
+        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
+
+        if confirm_overwrite(out_path):
+            cmd = [potrace_exe, in_path, '-o', out_path, '-s']
+            try:
+                subprocess.run(cmd, check=True)
+                logger.info(f'potrace.exe converted {os.path.basename(in_path)} to {os.path.basename(out_path)} successfully.') if logger else None
+                return out_path
+            except Exception as e:
+                raise RuntimeError(f'potrace.exe failed: {e}')

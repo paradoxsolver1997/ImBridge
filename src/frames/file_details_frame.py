@@ -1,14 +1,12 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
-from src.frames.base_frame import BaseFrame
-from src.frames.preview_frame import PreviewFrame
+from tkinter import ttk
+from PIL import Image
 import time
 import os
-from PIL import Image
-from src.utils.analyzer import vector_analyzer
-from src.utils.commons import get_script_size
-# 缓存元数据，避免重复I/O
 
+import src.utils.vector as vec
+
+from src.frames.base_frame import BaseFrame
+from src.frames.preview_frame import PreviewFrame
 
 class FileDetailsFrame(BaseFrame):
     def __init__(self, parent, *args, **kwargs):
@@ -18,42 +16,42 @@ class FileDetailsFrame(BaseFrame):
         self.build_contents()
 
     def build_contents(self):
-        # 主体frame
+        # Main frame
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True)
 
-        # Treeview区域
-        columns = ("文件名", "大小 (KB)", "修改时间")
+        # Treeview area
+        columns = ("Filename", "Size (KB)", "Modified Time")
         self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", selectmode="browse", height=8)
         for col in columns:
             self.tree.heading(col, text=col)
-            self.tree.column(col, anchor="w", width=50 if col=="大小 (KB)" else 150)
+            self.tree.column(col, anchor="w", width=50 if col=="Size (KB)" else 150)
         self.tree.pack(fill="x", padx=10, pady=(10, 2))
 
-        # 详情Frame
+        # Detail Frame
         self.detail_frame = ttk.Frame(main_frame)
         self.detail_frame.pack(fill="x", expand=False, padx=10, pady=(0, 4))
 
-        # 预览Frame
+        # Preview Frame
         self.preview_frame = PreviewFrame(main_frame, title="Input Preview", width=160, height=160)
         self.preview_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        # 绑定自定义翻页事件
+        # Bind custom page change event
         self.preview_frame.bind('<<PreviewPageChanged>>', self._on_preview_page_changed)
         
-        # 关闭按钮
+        # Close button
         btn = ttk.Button(main_frame, text="Withdraw", command=self.list_window.withdraw)
-        btn.pack(pady=(0, 6), anchor="e")
+        btn.pack(padx=(8, 8), pady=(0, 6), anchor="e")
         self.populate_file_list([])
 
     def populate_file_list(self, file_list=[]):
         
-        # --- 预览Frame队列初始化 ---
+        # --- Preview Frame queue initialization ---
         self.preview_frame.clear_file_queue()
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         if file_list:
-            # 填充Treeview
+            # Populate Treeview
             for f in file_list:
                 if os.path.isfile(f):
                     try:
@@ -68,16 +66,16 @@ class FileDetailsFrame(BaseFrame):
         
             self.tree.bind("<<TreeviewSelect>>", self.on_select)
 
-            # 默认选中第一个
+            # Default select the first
             if file_list:
                 self.tree.selection_set(file_list[0])
                 self.show_details(file_list[0])
-                # 预览Frame同步到第一个文件
+                # Preview Frame sync to the first file
                 # self._sync_preview_to_file(file_list[0])
     
     def _sync_preview_to_file(self, file_path):
         """
-        让preview_frame的queue_index指向file_path，并显示该文件
+        Let preview_frame's queue_index point to file_path and display the file
         """
         try:
             queue = list(self.preview_frame._PreviewFrame__file_queue)
@@ -88,7 +86,7 @@ class FileDetailsFrame(BaseFrame):
         except Exception:
             pass
 
-    # 详情显示函数
+    # Detail display function
     def sniff_type(self, path):
         try:
             with open(path,'rb') as f:
@@ -114,18 +112,18 @@ class FileDetailsFrame(BaseFrame):
         meta['Format'] = typ
         meta['Category'] = cat
         meta['Location'] = path
-        # 位图：显示像素尺寸（px）
+        # Raster: display pixel dimensions (px)
         if cat == 'Raster' and typ not in ('PDF','SVG','EPS'):
             try:
                 with Image.open(path) as im:
                     w, h = im.size
                     meta['Size'] = f'{w} × {h} px'
             except Exception as e:
-                meta['Size'] = '读取失败'
-        # PDF/EPS/PS：显示物理尺寸（cm）
+                meta['Size'] = 'Read failed'
+        # PDF/EPS/PS: display physical dimensions (cm)
         elif typ in ('PDF','EPS','PS'):
             try:
-                width_pt, height_pt = get_script_size(path)
+                width_pt, height_pt = vec.get_script_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
@@ -134,7 +132,7 @@ class FileDetailsFrame(BaseFrame):
                     meta['Size'] = 'N/A'
             except Exception:
                 meta['Size'] = 'N/A'
-        # SVG：优先用width/height属性（px），否则N/A
+        # SVG: prefer width/height attributes (px), otherwise N/A
         elif typ == 'SVG':
             try:
                 import xml.etree.ElementTree as ET
@@ -148,13 +146,13 @@ class FileDetailsFrame(BaseFrame):
                     meta['Size'] = 'N/A'
             except Exception:
                 meta['Size'] = 'N/A'
-        # 其它情况
+        # Other cases
         else:
             meta['Size'] = 'N/A'
-        # 矢量分析器补充信息
+        # Vector analyzer additional information
         if cat == 'Vector':
             try:
-                analysis = vector_analyzer(path)
+                analysis = vec.vector_analyzer(path)
             except Exception:
                 analysis = None
             if analysis:
@@ -175,31 +173,31 @@ class FileDetailsFrame(BaseFrame):
                         meta['Image Sizes'] = ', '.join(sizes) if sizes else '-'
         return meta
 
-    # 详情面板内容刷新
+    # Detail panel content refresh
     def show_details(self, path):
         for widget in self.detail_frame.winfo_children():
             widget.destroy()
         if not os.path.isfile(path):
-            ttk.Label(self.detail_frame, text="文件不存在", foreground="red").pack(anchor="w")
+            ttk.Label(self.detail_frame, text="File does not exist", foreground="red").pack(anchor="w")
             return
             
-        # 读取缓存或新解析
+        # Read from cache or parse anew
         if path in self._file_meta_cache:
             meta = self._file_meta_cache[path]
         else:
             meta = self.read_image_meta(path)
             self._file_meta_cache[path] = meta
-        # 展示每一条
+        # Display each item
         for k, v in meta.items():
             row = ttk.Frame(self.detail_frame)
             row.pack(fill="x", anchor="w", pady=1)
             ttk.Label(row, text=f"{k}: ", font=("TkDefaultFont", 10, "bold")).pack(side="left", anchor="w")
             ttk.Label(row, text=str(v), font=("TkDefaultFont", 10)).pack(side="left", anchor="w")
 
-        # 详情面板刷新时，同步预览Frame到当前文件
+        # When detail panel refreshes, sync preview Frame to current file
         self._sync_preview_to_file(path)
 
-    # 绑定选中事件
+    # Bind selection event
     def on_select(self, event):
         sel = self.tree.selection()
         if sel:
@@ -207,13 +205,13 @@ class FileDetailsFrame(BaseFrame):
     
 
     def _on_preview_page_changed(self, event):
-        # 只响应自身preview_frame发出的事件
+        # Only respond to events emitted by preview_frame itself
         if event.widget is not self.preview_frame:
             return
         queue = list(self.preview_frame._PreviewFrame__file_queue)
         idx = self.preview_frame._queue_index
         if 0 <= idx < len(queue):
             file_path = queue[idx]
-            # 高亮Treeview对应项
+            # Highlight the corresponding Treeview item
             self.tree.selection_set(file_path)
             self.tree.see(file_path)

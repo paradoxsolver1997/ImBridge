@@ -1,16 +1,12 @@
-# 新增：确认输出目录存在，否则询问用户是否创建
-import os
 import tkinter as tk
 from tkinter import messagebox
+import os
 import subprocess
 import shutil
 import json
 import importlib
-import numpy as np
-from typing import Optional
-import xml.etree.ElementTree as ET
-from PIL import Image
 
+heif_formats = [".heic", ".heif"]
 bitmap_formats = [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
 vector_formats = [".svg", ".pdf", ".eps", ".ps"]
 script_formats = [".ps", ".eps", ".pdf"]
@@ -96,13 +92,13 @@ def confirm_single_page(in_path: str) -> bool:
 
 def confirm_dir_existence(out_dir: str) -> bool:
     """
-    检查out_dir是否存在，不存在则弹窗询问用户是否创建。
-    若用户同意则递归创建，创建失败则警告并返回False。
-    若用户拒绝则返回False。
+    Confirm whether out_dir exists. If not, prompt the user to create it.
+    If the user agrees, recursively create the directory. If creation fails, warn and return False.
+    If the user declines, return False.
     """
     if os.path.exists(out_dir):
         return True
-    # 弹窗询问
+    # Prompt user
     root = None
     try:
         root = tk._default_root or tk.Tk()
@@ -122,7 +118,7 @@ def confirm_dir_existence(out_dir: str) -> bool:
         else:
             return False
     finally:
-        # 只在本函数创建的root才销毁
+        # Only destroy the root if it was created in this function
         if root and not tk._default_root:
             root.destroy()
 
@@ -188,7 +184,7 @@ def check_tool(tool_key: str) -> bool:
             else:
                 return True
         elif tool["type"] == "python":
-            # 智能检测所有python依赖项
+            # Intelligent detection of all Python dependencies
             import_name = tool.get("executables")[0] or tool["executables"][0]
             try:
                 return importlib.util.find_spec(import_name) is not None
@@ -196,18 +192,10 @@ def check_tool(tool_key: str) -> bool:
                 return False
         else:
             return False
-    # If tool_list.json does not define the key, try to detect it为Python包
+    # If tool_list.json does not define the key, try to detect it as a Python package
     try:
         if tool_key == "pymupdf":
             return importlib.util.find_spec("fitz") is not None
         return importlib.util.find_spec(tool_key) is not None
     except Exception:
         return False
-
-def get_raster_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
-    try:
-        img = Image.open(in_path)
-        return img.size
-    except Exception:
-        raise 
-

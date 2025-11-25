@@ -2,20 +2,17 @@ from typing import Optional, Tuple, Callable
 from PIL import Image, ImageEnhance, ImageFilter
 import os
 import tempfile
-import re
 import fitz  # PyMuPDF
 import shutil
 import xml.etree.ElementTree as ET
 
-from src.utils.logger import Logger
-import src.utils.converter as cv
-
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_single_page
 from src.utils.commons import confirm_dir_existence
-from src.utils.commons import get_script_size, get_svg_size
-from src.utils.commons import compute_trans_matrix
 
+from src.utils.logger import Logger
+import src.utils.converter as cv
+import src.utils.vector as vec
 
 
 def transform_raster(
@@ -98,12 +95,12 @@ def transform_image(
     
     if save_image:
         img.save(out_path)
+        logger.info(f"[Transform] saved to: {out_path}") if logger else None
+        return out_path
     else:
-        out_path = None
-    msg = f"[crop] saved to: {out_path}" if save_image else "[crop] image cropped without saving"
-    logger.info(msg) if logger else None
-    image_preview_callback(img) if image_preview_callback else None
-    return out_path
+        logger.info("[Transform] see preview frame for transformation effect") if logger else None
+        image_preview_callback(img) if image_preview_callback else None
+        return None
 
 
 def transform_svg(
@@ -127,8 +124,8 @@ def transform_svg(
         suffix = "resized"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
-        orig_width, orig_height = get_svg_size(in_path)
-        mat = compute_trans_matrix()
+        orig_width, orig_height = vec.get_svg_size(in_path)
+        mat = vec.compute_trans_matrix()
 
         if 'new_width' in kwargs and 'new_height' in kwargs:
             target_width = float(kwargs['new_width'])
@@ -145,7 +142,7 @@ def transform_svg(
             scale_y = 1.0
             target_width = orig_width
             target_height = orig_height
-        mat = compute_trans_matrix(mat, scale=(scale_x, scale_y))
+        mat = vec.compute_trans_matrix(mat, scale=(scale_x, scale_y))
 
         try:
             tree = ET.parse(in_path)
@@ -158,9 +155,9 @@ def transform_svg(
         root.set("height", str(target_height))
 
         if 'flip_lr' in kwargs and kwargs['flip_lr']:
-            mat = compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
+            mat = vec.compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
         if 'flip_tb' in kwargs and kwargs['flip_tb']:
-            mat = compute_trans_matrix(mat, flip_tb=True, translate=[0, target_height])
+            mat = vec.compute_trans_matrix(mat, flip_tb=True, translate=[0, target_height])
 
         if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
             angle = kwargs['rotate_angle'] % 360
@@ -178,7 +175,7 @@ def transform_svg(
                 180: [target_width, target_height],
                 270: [target_width, 0],
             }
-            mat = compute_trans_matrix(
+            mat = vec.compute_trans_matrix(
                 mat, 
                 rotate_angle=angle, 
                 translate=angle_map.get(angle, [0, 0])
@@ -198,16 +195,14 @@ def transform_svg(
                 tree.write(tmp_path, encoding="utf-8", xml_declaration=True)
                 file_preview_callback(tmp_path) if file_preview_callback else None
                 out_path = shutil.move(tmp_path, out_path) if save_image else None
-            msg = f"[vector] SVG saved to {out_path}" if save_image else "[vector] SVG resized without saving"
-            logger.info(msg) if logger else None
+            logger.info("[vector] see preview frame for transformation effect") if logger else None
+            return out_path
         except Exception as e:
             raise RuntimeError(f"SVG transform failed: {e}")
     else:
-        out_path = None
         file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        msg = f"[crop] see preview frame for cropping effect"
-    logger.info(msg) if logger else None
-    return out_path
+        logger.info("[Transform] see preview frame for transformation effect") if logger else None
+        return None
 
 
 def transform_pdf(
@@ -222,75 +217,66 @@ def transform_pdf(
     def show_transform(img):
         return transform_raster(img, logger=logger, **kwargs)
 
+    if not confirm_single_page(in_path):
+        return None
+
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
         in_fmt = os.path.splitext(in_path)[1].lower()
         suffix = "resized"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
 
-        if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-            # 用PyMuPDF整体缩放纯矢量PDF内容
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                # 1. 先用 wash_eps_ps 清洗，输出到 out_path
-                tmp_out = cv.script_convert(in_path, tmp_dir)
-                try:
-                    with fitz.open(tmp_out) as doc:
-                        with fitz.open() as new_doc:
-                            for page in doc:
-                                rect = page.rect
-                                orig_width = rect.width
-                                orig_height = rect.height
-                                # 计算缩放因子
-                    
-                                if 'new_width' in kwargs and 'new_height' in kwargs:
-                                    target_width = float(kwargs['new_width'])
-                                    target_height = float(kwargs['new_height'])
-                                    scale_x = target_width / orig_width
-                                    scale_y = target_height / orig_height
-                                elif 'scale_x' in kwargs and 'scale_y' in kwargs:
-                                    scale_x = float(kwargs['scale_x'])
-                                    scale_y = float(kwargs['scale_y'])
-                                    target_width = orig_width * scale_x
-                                    target_height = orig_height * scale_y
-                                else:
-                                    scale_x = 1.0
-                                    scale_y = 1.0
-                                    target_width = orig_width
-                                    target_height = orig_height
-                                logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None
-                                new_page = new_doc.new_page(width=target_width, height=target_height)
-                                new_page.show_pdf_page(
-                                    new_page.rect,  # 目标矩形
-                                    doc,  # 源文档
-                                    page.number,  # 源页码
-                                    clip=None,  # 不裁剪
-                                    rotate=0,  # 不旋转
-                                    keep_proportion=False,  # 不保持比例(使用我们的缩放)
-                                    overlay=True
-                                )
-                                if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                                    angle = (360 - kwargs.get('rotate_angle')) % 360
-                                    logger.info(f"[vector] Rotating PDF page by {angle} degrees") if logger else None
-                                    new_page.set_rotation(angle)
-
-                                if 'flip_lr' in kwargs or 'flip_tb' in kwargs:
-                                    logger.error(f"[vector] Flipping PDF page is not supported.") if logger else None
-
-                            tmp_path = os.path.join(tmp_dir, "temp.pdf")
-                            new_doc.save(tmp_path)
-                    file_preview_callback(tmp_path) if file_preview_callback else None
-                    out_path = shutil.move(tmp_path, out_path) if save_image else None
-                    msg = f"[vector] PDF saved to {out_path}" if save_image else "[vector] PDF resized without saving"
-                    logger.info(msg) if logger else None
-                    return out_path
-                except Exception as e:
-                    raise RuntimeError(f"PDF crop/resize failed: {e}")
+        if confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+            try:
+                with fitz.open(in_path) as doc:
+                    with fitz.open() as new_doc:
+                        page = doc[0]
+                        rect = page.rect
+                        orig_width = rect.width
+                        orig_height = rect.height
+            
+                        if 'new_width' in kwargs and 'new_height' in kwargs:
+                            target_width = float(kwargs['new_width'])
+                            target_height = float(kwargs['new_height'])
+                            scale_x = target_width / orig_width
+                            scale_y = target_height / orig_height
+                        elif 'scale_x' in kwargs and 'scale_y' in kwargs:
+                            scale_x = float(kwargs['scale_x'])
+                            scale_y = float(kwargs['scale_y'])
+                            target_width = orig_width * scale_x
+                            target_height = orig_height * scale_y
+                        else:
+                            scale_x = 1.0
+                            scale_y = 1.0
+                            target_width = orig_width
+                            target_height = orig_height
+                        logger.info(f"[vector] Page scaled: {orig_width}x{orig_height}pt -> {target_width}x{target_height}pt, scale=({scale_x:.2f},{scale_y:.2f})") if logger else None
+                        new_page = new_doc.new_page(width=target_width, height=target_height)
+                        new_page.show_pdf_page(
+                            new_page.rect,  # 目标矩形
+                            doc,  # 源文档
+                            page.number,  # 源页码
+                            clip=None,  # 不裁剪
+                            rotate=0,  # 不旋转
+                            keep_proportion=False,  # 不保持比例(使用我们的缩放)
+                            overlay=True
+                        )
+                        if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+                            angle = (360 - kwargs.get('rotate_angle')) % 360
+                            logger.info(f"[vector] Rotating PDF page by {angle} degrees") if logger else None
+                            new_page.set_rotation(angle)
+                        if 'flip_lr' in kwargs or 'flip_tb' in kwargs:
+                            logger.error(f"[vector] Flipping PDF page is not supported.") if logger else None
+                        new_doc.save(out_path)
+                file_preview_callback(out_path) if file_preview_callback else None
+                logger.info(f"[vector] PDF saved to {out_path}") if logger else None
+                return out_path
+            except Exception as e:
+                raise RuntimeError(f"PDF crop/resize failed: {e}")
     else:
-        out_path = None
         file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        msg = f"[crop] see preview frame for cropping effect"
-    logger.info(msg) if logger else None
-    return out_path
+        logger.info(f"[crop] see preview frame for cropping effect") if logger else None
+        return out_path
 
 def transform_script(
     in_path: str,
@@ -318,7 +304,7 @@ def transform_script(
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
         
         if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
-            orig_width, orig_height = get_script_size(in_path)
+            orig_width, orig_height = vec.get_script_size(in_path)
             if 'new_width' in kwargs and 'new_height' in kwargs:
                 target_width = float(kwargs['new_width'])
                 target_height = float(kwargs['new_height'])
@@ -335,62 +321,54 @@ def transform_script(
                 target_width = orig_width
                 target_height = orig_height
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
+            target_size = max(target_width, target_height)
 
-                tmp_out_0 = os.path.join(tmp_dir, "temp_0.eps")
-                
-                # if 'rotate_angle' in kwargs and (kwargs.get('rotate_angle') % 360 in [90, 270]):
-                target_size = max(target_width, target_height)
-
-                update_matrix(in_path, tmp_out_0, scale=(scale_x, scale_y))   
-                new_bbox = change_bbox(
-                        in_path=tmp_out_0, 
-                        out_path=tmp_out_0, 
-                        old_bbox=(0, 0, orig_width, orig_height),
-                        new_bbox=(0, 0, target_size, target_size),
-                        logger=logger
-                    )
-
-                if 'flip_lr' in kwargs and kwargs['flip_lr']:
-                    update_matrix(tmp_out_0, tmp_out_0, flip_lr=True, translate=[target_width, 0])
-
-                if 'flip_tb' in kwargs and kwargs['flip_tb']: 
-                    update_matrix(tmp_out_0, tmp_out_0, flip_tb=True, translate=[0, target_height])           
-
-                if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
-                    angle = (360 - kwargs.get('rotate_angle')) % 360
-                    # 如果旋转90或270度，需要交换width和height
-                    if angle in [90, 270]:
-                        temp_value = target_width
-                        target_width = target_height
-                        target_height = temp_value
-                    angle_map = {
-                        0: [0, 0],
-                        90: [0, target_height],
-                        180: [target_width, target_height],
-                        270: [target_width, 0],
-                    }
-                    update_matrix(
-                        tmp_out_0, 
-                        tmp_out_0, 
-                        rotate_angle=angle, 
-                        translate=angle_map.get(angle, [0, 0])
-                    )
-                    logger.info(f"[vector] Rotating EPS by {angle} degrees") if logger else None
-
-                change_bbox(
-                    in_path=tmp_out_0, 
-                    out_path=tmp_out_0, 
+            vec.update_matrix(in_path, out_path, scale=(scale_x, scale_y))   
+            vec.change_bbox(
+                    in_path=out_path, 
+                    out_path=out_path, 
                     old_bbox=(0, 0, orig_width, orig_height),
-                    new_bbox=(0, 0, target_width, target_height),
+                    new_bbox=(0, 0, target_size, target_size),
                     logger=logger
                 )
-                file_preview_callback(tmp_out_0) if file_preview_callback else None
-                out_path = shutil.move(tmp_out_0, out_path) if save_image else None
-                msg = f"[vector] EPS/PS saved to {out_path}"
-        out_path = None
-        file_preview_callback(in_path, show_transform) if file_preview_callback else None
-        msg = f"[crop] see preview frame for cropping effect"
-    logger.info(msg) if logger else None
-    return out_path
 
+            if 'flip_lr' in kwargs and kwargs['flip_lr']:
+                vec.update_matrix(out_path, out_path, flip_lr=True, translate=[target_width, 0])
+
+            if 'flip_tb' in kwargs and kwargs['flip_tb']: 
+                vec.update_matrix(out_path, out_path, flip_tb=True, translate=[0, target_height])           
+
+            if 'rotate_angle' in kwargs and kwargs['rotate_angle'] is not None:
+                angle = (360 - kwargs.get('rotate_angle')) % 360
+                # 如果旋转90或270度，需要交换width和height
+                if angle in [90, 270]:
+                    temp_value = target_width
+                    target_width = target_height
+                    target_height = temp_value
+                angle_map = {
+                    0: [0, 0],
+                    90: [0, target_height],
+                    180: [target_width, target_height],
+                    270: [target_width, 0],
+                }
+                vec.update_matrix(
+                    out_path, 
+                    out_path, 
+                    rotate_angle=angle, 
+                    translate=angle_map.get(angle, [0, 0])
+                )
+                logger.info(f"[vector] Rotating EPS by {angle} degrees") if logger else None
+
+            vec.change_bbox(
+                in_path=out_path, 
+                out_path=out_path, 
+                old_bbox=(0, 0, orig_width, orig_height),
+                new_bbox=(0, 0, target_width, target_height),
+                logger=logger
+            )
+            file_preview_callback(out_path) if file_preview_callback else None
+            logger.info(f"[vector] EPS/PS saved to {out_path}") if logger else None
+    else:
+        file_preview_callback(in_path, show_transform) if file_preview_callback else None
+        logger.info(f"[crop] see preview frame for cropping effect") if logger else None
+        return None

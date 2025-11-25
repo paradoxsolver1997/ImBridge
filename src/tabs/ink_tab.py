@@ -1,10 +1,15 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+import tempfile
+
 from src.tabs.base_tab import BaseTab
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
-import src.utils.inker as ik
+import src.utils.vector as vec
+import src.utils.raster as rst
+import src.utils.converter as cv
+from src.utils.commons import confirm_dir_existence
 
 
 class InkTab(BaseTab):
@@ -35,6 +40,7 @@ class InkTab(BaseTab):
 
         self.io_frame = InputOutputFrame(self, title="Input-Output Settings", **parameters)
         self.io_frame.pack(padx=4, pady=(2, 4), fill="x")
+        self.io_frame.files_var.trace_add("write", self.on_files_var_changed)
 
         convert_frame = ttk.Frame(self)
         convert_frame.pack(padx=(0, 0), pady=(8, 4), fill="x")
@@ -59,7 +65,7 @@ class InkTab(BaseTab):
         ttk.Button(
             option_1_frame,
             text="Preview",
-            command=lambda: ik.grayscale_image(
+            command=lambda: rst.grayscale_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
                 out_dir=self.io_frame.out_dir_var.get(),
                 binarize=self.binarize_flag.get(),
@@ -73,7 +79,7 @@ class InkTab(BaseTab):
         ttk.Button(
             option_1_frame,
             text="Save",
-            command=lambda: ik.grayscale_image(
+            command=lambda: rst.grayscale_image(
                 in_path=self.io_frame.files_var.get().strip().split("\n")[0],
                 out_dir=self.io_frame.out_dir_var.get(),
                 binarize=self.binarize_flag.get(),
@@ -93,25 +99,48 @@ class InkTab(BaseTab):
         ttk.Button(
             option_2_frame,
             text="Preview",
-            command=lambda: ik.trace_image(
-                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
-                out_dir=self.io_frame.out_dir_var.get(),
-                project_callback=self.preview_frame.show_image,
-                save_image=False,
-                logger=self.logger,
-            ),
+            command=lambda: self.trace_image(save_image=False),
             width=12
         ).pack(side="left", padx=(18, 4), pady=8)
 
         ttk.Button(
             option_2_frame,
             text="Save",
-            command=lambda: ik.trace_image(
-                in_path=self.io_frame.files_var.get().strip().split("\n")[0],
-                out_dir=self.io_frame.out_dir_var.get(),
-                project_callback=self.preview_frame.show_image,
-                save_image=True,
-                logger=self.logger,
-            ),
+            command=lambda: self.trace_image(save_image=True),
             width=12
         ).pack(side="left", padx=(4, 12), pady=8)
+
+
+    def trace_image(self, save_image: bool = True):
+        
+        in_path = self.io_frame.files_var.get().strip().split("\n")[0]
+        out_dir = self.io_frame.out_dir_var.get()
+
+        if confirm_dir_existence(out_dir):
+            if os.path.getsize(in_path) > 200 * 1024:
+                raise RuntimeError(f"File too large (>200K): {os.path.basename(in_path)}")
+            
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                in_fmt = os.path.splitext(in_path)[1].lower()
+                if in_fmt != '.bmp':
+                    # Automatically convert to bmp temporary file
+                    temp_bmp = cv.raster_convert(in_path, tmp_dir, out_fmt='.bmp', logger=self.logger)
+                    bmp_path = rst.grayscale_image(temp_bmp, tmp_dir, binarize=True, save_image=True, logger=self.logger)
+                else:
+                    bmp_path = rst.grayscale_image(in_path, tmp_dir, binarize=True, save_image=True, logger=self.logger)
+                if save_image:
+                    out_path = vec.trace_bmp_to_svg(bmp_path, out_dir, logger=self.logger)
+                    self.preview_frame.show_image(vec.show_svg(out_path))
+                    self.logger.info(f'Tracing {os.path.basename(in_path)} successful, saved to {os.path.basename(out_path)}.')
+                else:
+                    temp_bmp = vec.trace_bmp_to_svg(bmp_path, tmp_dir, logger=self.logger)
+                    self.preview_frame.show_image(vec.show_svg(temp_bmp))
+                    self.logger.info(f'Tracing {os.path.basename(in_path)} successful.')
+                    out_path = None
+            return out_path
+        
+
+    def on_files_var_changed(self, *args):
+        file = self.io_frame.files_var.get().strip().split("\n")[0]
+        if file and os.path.isfile(file):
+            self.io_frame.show_file_list()

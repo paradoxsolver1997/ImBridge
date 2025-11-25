@@ -1,6 +1,4 @@
-import tkinter as tk
 from tkinter import ttk
-import logging
 
 
 class BaseFrame(ttk.Frame):
@@ -17,10 +15,6 @@ class BaseFrame(ttk.Frame):
 
     def build_contents(self):
         pass
-
-    def log(self, message, level=logging.INFO):
-        if self.logger:
-            self.logger.info(message)
 
     def activate(self):
         def activate_frame(frame):

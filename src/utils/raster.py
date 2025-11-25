@@ -1,47 +1,32 @@
 from PIL import Image
-from typing import Optional, Tuple, Callable
+from typing import Optional, Callable
 import os
-import tempfile
-import subprocess
 import shutil
 import numpy as np
 
 from src.utils.logger import Logger
-import src.utils.converter as cv
 
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_dir_existence
-from src.utils.commons import check_tool
 
 
-def trace_image(
-        in_path: str, 
-        out_dir: str, 
-        save_image: bool = True, 
-        project_callback: Optional[Callable] = None, 
-        logger: Optional[Logger] = None) -> Optional[str]:
-    if confirm_dir_existence(out_dir):
-        if os.path.getsize(in_path) > 200 * 1024:
-            raise RuntimeError(f"File too large (>200K): {os.path.basename(in_path)}")
-        
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            in_fmt = os.path.splitext(in_path)[1].lower()
-            if in_fmt != '.bmp':
-                # Automatically convert to bmp temporary file
-                temp_bmp = cv.raster_convert(in_path, tmp_dir, out_fmt='.bmp', logger=logger)
-                bmp_path = grayscale_image(temp_bmp, tmp_dir, binarize=True, save_image=True, logger=logger)
-            else:
-                bmp_path = grayscale_image(in_path, tmp_dir, binarize=True, save_image=True, logger=logger)
-            if save_image:
-                out_path = trace_bmp_to_svg(bmp_path, out_dir, logger=logger)
-                project_callback(cv.show_svg(out_path)) if project_callback else None
-                logger.info(f'Tracing {os.path.basename(in_path)} successful, saved to {os.path.basename(out_path)}.') if logger else None
-            else:
-                temp_bmp = trace_bmp_to_svg(bmp_path, tmp_dir, logger=logger)
-                project_callback(cv.show_svg(temp_bmp)) if project_callback else None
-                logger.info(f'Tracing {os.path.basename(in_path)} successful.') if logger else None
-                out_path = None
-        return out_path
+def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Image:
+    """Remove alpha channel from an image by compositing onto a background color."""
+    if img.mode == "RGBA":
+        background = Image.new("RGB", img.size, bg_color)
+        background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+        return background
+    elif img.mode != "RGB" and img.mode != "L":
+        return img.convert("RGB")
+    return img
+
+
+def get_raster_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        img = Image.open(in_path)
+        return img.size
+    except Exception:
+        raise 
 
 
 def grayscale_image(
@@ -117,35 +102,3 @@ def grayscale_image(
         return out_path
 
 
-def trace_bmp_to_svg(
-    in_path: str, 
-    out_dir: str,
-    logger: Optional[Logger] = None
-) -> Optional[str]:
-    """
-    Convert BMP bitmap to vector graphics (eps/svg/pdf/ps) using potrace.exe.
-    Only supports grayscale or black-and-white BMP.
-    out_fmt: eps/svg/pdf/ps
-    """
-    potrace_exe = None
-    if check_tool('potrace'):
-        potrace_exe = shutil.which('potrace')
-    if not potrace_exe:
-        raise RuntimeError('potrace.exe not found in PATH; please install and configure the environment variable')
-
-    if confirm_dir_existence(out_dir):
-        out_fmt = ".svg"
-        base_name = os.path.splitext(os.path.basename(in_path))[0]
-        in_fmt = os.path.splitext(in_path)[1].lower()
-        assert in_fmt == ".bmp"
-        suffix = "traced"
-        out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
-
-        if confirm_overwrite(out_path):
-            cmd = [potrace_exe, in_path, '-o', out_path, '-s']
-            try:
-                subprocess.run(cmd, check=True)
-                logger.info(f'potrace.exe converted {os.path.basename(in_path)} to {os.path.basename(out_path)} successfully.') if logger else None
-                return out_path
-            except Exception as e:
-                raise RuntimeError(f'potrace.exe failed: {e}')

@@ -1,15 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+
 from src.tabs.base_tab import BaseTab
-import src.utils.transformer as sc
 from src.frames.labeled_validated_entry import LabeledValidatedEntry
 from src.frames.input_output_frame import InputOutputFrame
 from src.frames.title_frame import TitleFrame
 from src.frames.check_frame import CheckFrame
 from src.utils.commons import bitmap_formats, vector_formats, script_formats
-from src.utils.commons import get_script_size, get_svg_size, get_raster_size
-
+import src.utils.vector as vec
+import src.utils.raster as rst
+import src.utils.transformer as sc
 
 class TransformTab(BaseTab):
 
@@ -340,6 +341,7 @@ class TransformTab(BaseTab):
     def on_files_var_changed(self, *args):
         file = self.io_frame.files_var.get().strip().split("\n")[0]
         if file:
+            self.io_frame.show_file_list()
             ext = os.path.splitext(file)[1].lower()
             if ext in vector_formats:
                 self.sharpness_entry.deactivate()
@@ -358,11 +360,11 @@ class TransformTab(BaseTab):
             self.scale_y_factor_var.set(1.0)
 
             if ext == '.svg':
-                sz = get_svg_size(file)
+                sz = vec.get_svg_size(file)
             elif ext in script_formats:
-                sz = get_script_size(file)
+                sz = vec.get_script_size(file)
             else:
-                sz = get_raster_size(file)
+                sz = rst.get_raster_size(file)
             self.width_entry.var.set(value=sz[0])
             self.height_entry.var.set(value=sz[1])
 

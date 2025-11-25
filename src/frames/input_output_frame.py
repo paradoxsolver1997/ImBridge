@@ -1,10 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 import os
-import logging
-from src.frames.base_frame import BaseFrame
 import subprocess
-from src.frames.file_details_frame import FileDetailsFrame
+
+from src.frames.base_frame import BaseFrame
 
 class InputOutputFrame(BaseFrame):
     
@@ -132,10 +131,10 @@ class InputOutputFrame(BaseFrame):
 
     
     def refresh_file_list(self, *args):
-        # 当文件列表变化时，若详情窗口存在且未销毁，则刷新
+        # When the file list changes, if the detail window exists and is not destroyed, refresh it
         if hasattr(self, "file_details_frame") and hasattr(self, "list_window"):
             if self.list_window.winfo_exists():
-                # 重新加载文件列表
+                # Reload file list
                 self.file_details_frame.populate_file_list(self.load_file_list())
                 # self.logger.debug("File details frame refreshed due to file list change.")
 
