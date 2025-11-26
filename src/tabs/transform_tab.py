@@ -337,6 +337,7 @@ class TransformTab(BaseTab):
 
 
     def on_files_var_changed(self, *args):
+        self.preview_frame.clear_preview()
         file = self.io_frame.files_var.get().strip().split("\n")[0]
         if file and os.path.isfile(file):
             ext = os.path.splitext(file)[1].lower()

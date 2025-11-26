@@ -69,8 +69,7 @@ class CropTab(BaseTab):
             width=5,
         )
         self.crop_x_entry.pack(side="left", padx=(2, 2))
-        self.crop_x_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
-
+        
         self.crop_y_var = tk.IntVar(value=0)
         self.crop_y_entry = LabeledValidatedEntry(
             cord_row,
@@ -80,8 +79,7 @@ class CropTab(BaseTab):
             width=5,
         )
         self.crop_y_entry.pack(side="left", padx=(2, 2))
-        self.crop_y_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
-
+        
         self.crop_w_var = tk.IntVar(value=1)
         self.crop_w_entry = LabeledValidatedEntry(
             cord_row,
@@ -91,8 +89,7 @@ class CropTab(BaseTab):
             width=5,
         )
         self.crop_w_entry.pack(side="left", padx=(2, 2))
-        self.crop_w_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
-
+        
         self.crop_h_var = tk.IntVar(value=1)
         self.crop_h_entry = LabeledValidatedEntry(
             cord_row,
@@ -102,11 +99,10 @@ class CropTab(BaseTab):
             width=5,
         )
         self.crop_h_entry.pack(side="left", padx=(2, 2))
-        self.crop_h_entry.entry.bind("<FocusOut>", lambda e: self.on_crop(save_flag=False))
-
+        
         ttk.Button(
             cord_row,
-            text="Confirm",
+            text="Preview",
             command=lambda: self.on_crop(save_flag=False)
         ).pack(side="left", padx=(2, 8))
 
@@ -172,7 +168,7 @@ class CropTab(BaseTab):
                 self.io_frame.out_dir_var.get(),
                 crop_box=crop_box,
                 save_image=save_flag,
-                file_preview_callback=self.preview_frame.show_file, 
+                preview_callback=self.preview_frame.show_image, 
                 logger=self.logger,
                 kwargs=params
             )
@@ -187,22 +183,21 @@ class CropTab(BaseTab):
         if file and os.path.isfile(file):
             ext = os.path.splitext(file)[1].lower()
 
-            unit = 'pt' if ext in script_formats else 'px'
-            self.crop_w_entry.label.config(text=f"W ({unit})")
-            self.crop_h_entry.label.config(text=f"H ({unit})")
-            self.crop_x_entry.label.config(text=f"X ({unit})")
-            self.crop_y_entry.label.config(text=f"Y ({unit})")
-
             if ext == '.svg':
-                sz = vec.get_svg_size(file)
+                sz, unit = vec.get_svg_size(file)
             elif ext == '.pdf':
-                sz = vec.get_pdf_size(file)
+                sz, unit = vec.get_pdf_size(file)
             elif ext in ['.eps', '.ps']:
-                sz = vec.get_script_size(file)
+                sz, unit = vec.get_script_size(file)
             else:
-                sz = rst.get_raster_size(file)
+                sz, unit = rst.get_raster_size(file)
                 
             self.crop_x_var.set(value=0)
             self.crop_y_var.set(value=0)
             self.crop_w_var.set(value=int(sz[0]))
             self.crop_h_var.set(value=int(sz[1]))
+
+            self.crop_w_entry.label.config(text=f"W ({unit})")
+            self.crop_h_entry.label.config(text=f"H ({unit})")
+            self.crop_x_entry.label.config(text=f"X ({unit})")
+            self.crop_y_entry.label.config(text=f"Y ({unit})")

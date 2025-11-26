@@ -4,7 +4,6 @@ import os
 import fitz  # PyMuPDF
 import math
 import xml.etree.ElementTree as ET
-
 from src.utils.logger import Logger
 
 from src.utils.commons import confirm_overwrite
@@ -96,11 +95,17 @@ def crop_svg(
     crop_box: tuple[int, int, int, int],
     save_image: bool = True,
     preview_callback: Optional[Callable] = None,
-    logger: Optional[Logger] = None
+    logger: Optional[Logger] = None,
+    **kwargs
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
 
-    def show_crop(img):
-        return display_crop(img, crop_box=crop_box)
+    dpi = kwargs.get("dpi", 96)
+    def display_crop_svg(img):
+        x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
+        y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
+        x2 = math.floor(crop_box[2] / 72 * dpi)
+        y2 = math.floor(crop_box[3] / 72 * dpi)
+        return display_crop(img, crop_box=(x1, y1, x2, y2))
     
     (orig_width, orig_height), unit = vec.get_svg_size(in_path)
     if not confirm_cropbox(crop_box, (orig_width, orig_height)):
@@ -126,8 +131,8 @@ def crop_svg(
                 root.set("height", str(h))
                 tree.write(out_path, encoding="utf-8", xml_declaration=True)
                 vec.optimize_svg(out_path, out_path)
-                preview_img = vec.show_svg(out_path)
-                preview_callback(preview_img) if preview_callback else None
+                preview_img = vec.show_svg(out_path, dpi=dpi)
+                preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] SVG saved to {out_path}") if logger else None
                 return out_path
             except Exception as e:
@@ -135,8 +140,8 @@ def crop_svg(
         else:
             return None
     else:
-        preview_img = display_crop(vec.show_svg(in_path), crop_box, eps_coordinate=True)
-        preview_callback(preview_img) if preview_callback else None
+        preview_img = display_crop_svg(vec.show_svg(in_path, dpi=dpi))
+        preview_callback(preview_img, unit) if preview_callback else None
         logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None
 
@@ -152,18 +157,16 @@ def crop_pdf(
     
     dpi = kwargs.get("dpi", 96)
 
-    def show_crop(img):    
-        display_crop_box = (
-            max(math.floor(crop_box[0] / 72 * dpi), 0),
-            max(math.floor(crop_box[1] / 72 * dpi), 0),
-            math.floor(crop_box[2] / 72 * dpi),
-            math.floor(crop_box[3] / 72 * dpi),
-        )
-        return display_crop(img, crop_box=display_crop_box)
+    def display_crop_pdf(img):
+        x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
+        y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
+        x2 = math.floor(crop_box[2] / 72 * dpi)
+        y2 = math.floor(crop_box[3] / 72 * dpi)
+        return display_crop(img, crop_box=(x1, y1, x2, y2))
 
     if not confirm_single_page(in_path):
         return None
-    (orig_width, orig_height), _ = vec.get_pdf_size(in_path)
+    (orig_width, orig_height), unit = vec.get_pdf_size(in_path)
     if not confirm_cropbox(crop_box, (orig_width, orig_height)):
         logger.error("[vector] Crop box invalid (exceeding the bounds), skipping crop.")
         return None
@@ -193,7 +196,7 @@ def crop_pdf(
                             logger.info(f"[vector] Set cropbox to {crop_box}") if logger else None
                         new_doc.save(out_path)
                 preview_img = vec.show_script(out_path, dpi=dpi)
-                preview_callback(preview_img, "pt") if preview_callback else None
+                preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] PDF saved to {out_path}") if logger else None    
                 return out_path
             except Exception as e:
@@ -201,8 +204,8 @@ def crop_pdf(
         else:
             return None
     else:
-        preview_img = display_crop(vec.show_script(in_path, dpi=dpi), crop_box)
-        preview_callback(preview_img, "pt") if preview_callback else None
+        preview_img = display_crop_pdf(vec.show_script(in_path, dpi=dpi))
+        preview_callback(preview_img, unit) if preview_callback else None
         logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None
 
@@ -225,18 +228,17 @@ def crop_script(
     """
     dpi = kwargs.get("dpi", 96)
 
-    def show_crop_script(img):
-        display_crop_box = (
-            max(math.floor(crop_box[0] / 72 * dpi), 0),
-            max(math.floor(crop_box[1] / 72 * dpi), 0),
-            math.floor(crop_box[2] / 72 * dpi),
-            math.floor(crop_box[3] / 72 * dpi),
-        )
-        return display_crop(img, crop_box=display_crop_box, eps_coordinate=True)
+    def display_crop_script(img):
+        x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
+        y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
+        x2 = math.floor(crop_box[2] / 72 * dpi)
+        y2 = math.floor(crop_box[3] / 72 * dpi)
+        y1, y2 = img.height - y2, img.height - y1 # EPS coordinate system
+        return display_crop(img, crop_box=(x1, y1, x2, y2))
     
     if not confirm_single_page(in_path):
         return None
-    (orig_width, orig_height), _ = vec.get_script_size(in_path)
+    (orig_width, orig_height), unit = vec.get_script_size(in_path)
     if not confirm_cropbox(crop_box, (orig_width, orig_height)):
         logger.error("[vector] Crop box invalid (exceeding the bounds), skipping crop.")
         return None
@@ -276,13 +278,13 @@ def crop_script(
                 translate=[-crop_box[0], -crop_box[1]],  # y direction translation
             )
             preview_img = vec.show_script(out_path, dpi=dpi)
-            preview_callback(preview_img, "pt") if preview_callback else None
+            preview_callback(preview_img, unit) if preview_callback else None
             logger.info(f"[vector] EPS saved to {out_path}") if logger else None
             return out_path
         else:
             return None
     else:
-        preview_img = display_crop(vec.show_script(in_path, dpi=dpi), crop_box, eps_coordinate=True)
-        preview_callback(preview_img, "pt") if preview_callback else None
+        preview_img = display_crop_script(vec.show_script(in_path, dpi=dpi))
+        preview_callback(preview_img, unit) if preview_callback else None
         logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None

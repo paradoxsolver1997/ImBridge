@@ -39,7 +39,7 @@ class ToolTab(BaseTab):
         external_row = ttk.LabelFrame(
             self, text="Python Dependencies", style="Bold.TLabelframe"
         )
-        external_row.pack(side="top", padx=8, pady=8, fill="x", expand=True, anchor="n")
+        external_row.pack(side="top", padx=8, pady=2, fill="x", expand=True, anchor="n")
         for key, label, homepage in self.python_keys:
             sub_row = ttk.Frame(external_row)
             sub_row.pack(fill="x", pady=0)
@@ -61,7 +61,7 @@ class ToolTab(BaseTab):
         dll_row = ttk.LabelFrame(
             self, text="External Tools", style="Bold.TLabelframe"
         )
-        dll_row.pack(side="top", padx=8, pady=8, fill="x", expand=True, anchor="n")
+        dll_row.pack(side="top", padx=8, pady=2, fill="x", expand=True, anchor="n")
         for key, label, homepage in self.external_keys:
             sub_row = ttk.Frame(dll_row)
             sub_row.pack(fill="x")

@@ -24,7 +24,7 @@ def remove_alpha_channel(img: Image.Image, bg_color=(255, 255, 255)) -> Image.Im
 def get_raster_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     try:
         img = Image.open(in_path)
-        return img.size
+        return img.size, "px"
     except Exception:
         raise 
 
