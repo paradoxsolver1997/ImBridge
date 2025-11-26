@@ -125,13 +125,15 @@ def transform_svg(
     def mat2str(mat: list[float, float, float, float, float, float]) -> str:
         return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
     
+    
     try:
         tree = ET.parse(in_path)
         root = tree.getroot()
-        (orig_width, orig_height), unit = vec.get_size_from_root(root)
         view_box = vec.get_view_box_from_root(root)
+        (orig_width, orig_height), unit = vec.get_size_from_root(root)
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
+
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
         in_fmt = os.path.splitext(in_path)[1].lower()
@@ -188,7 +190,6 @@ def transform_svg(
                 translate=angle_map.get(angle, [0, 0])
             )
             logger.info(f"[Transform] Rotating SVG by {angle} degrees") if logger else None
-        
         view_box = vec.transform_box(view_box, mat)
         try:
             g = ET.Element("g")
@@ -198,8 +199,8 @@ def transform_svg(
             g.set("transform", " ".join([mat2str(mat)]))
             root.append(g)
             root.set("viewBox", "{} {} {} {}".format(*view_box))
-            root.set("width", str(target_width))
-            root.set("height", str(target_height))
+            root.set("width", f"{target_width}{unit}")
+            root.set("height", f"{target_height}{unit}")
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
             vec.optimize_svg(out_path, out_path)
             preview_img = vec.show_svg(out_path, dpi=dpi)

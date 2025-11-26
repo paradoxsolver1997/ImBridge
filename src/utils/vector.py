@@ -117,8 +117,7 @@ def get_svg_view_box(in_path: str) -> tuple[Optional[float], Optional[float]]:
 def get_view_box_from_root(root):
     try:
         viewbox_str = root.get('viewBox')
-        viewbox = tuple(map(int, viewbox_str.split()))
-        return viewbox
+        return tuple(map(float, viewbox_str.split()))
     except:
         return None
 
@@ -126,11 +125,7 @@ def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     tree = ET.parse(in_path)
     root = tree.getroot()
     full_size, unit = get_size_from_root(root)
-    viewbox = get_view_box_from_root(root)
-    if viewbox is not None and isinstance(viewbox, Tuple):
-        return (viewbox[2], viewbox[3]), unit
-    else:
-        return full_size, unit
+    return full_size, unit
 
 def get_size_from_root(root):
     try:
@@ -609,7 +604,7 @@ def transform_box(
     mat: Tuple[float, float, float, float, float, float]): 
 
     anchor_1 = apply_transform((box[0], box[1]), mat)
-    anchor_2 = apply_transform((box[0] + box[2], box[0] + box[3]), mat)
+    anchor_2 = apply_transform((box[0] + box[2], box[1] + box[3]), mat)
     x_min = int(min(anchor_1[0], anchor_2[0]))
     x_max = int(max(anchor_1[0], anchor_2[0]))
     y_min = int(min(anchor_1[1], anchor_2[1]))

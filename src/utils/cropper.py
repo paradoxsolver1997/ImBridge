@@ -100,14 +100,24 @@ def crop_svg(
 ) -> Optional[Tuple[Optional[str], Optional[Image.Image]]]:
 
     dpi = kwargs.get("dpi", 96)
+    try:
+        tree = ET.parse(in_path)
+        root = tree.getroot()
+        view_box = vec.get_view_box_from_root(root)
+        (orig_width, orig_height), unit = vec.get_size_from_root(root)
+        if view_box is None:
+            view_box = (0, 0, orig_width, orig_height)
+            root.set("viewBox", "{} {} {} {}".format(*view_box))
+    except Exception:
+        raise RuntimeError("Failed to parse SVG dimensions.")
+    
     def display_crop_svg(img):
         x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
         y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
         x2 = math.floor(crop_box[2] / 72 * dpi)
         y2 = math.floor(crop_box[3] / 72 * dpi)
         return display_crop(img, crop_box=(x1, y1, x2, y2))
-    
-    (orig_width, orig_height), unit = vec.get_svg_size(in_path)
+
     if not confirm_cropbox(crop_box, (orig_width, orig_height)):
         logger.error("[vector] Crop box invalid (exceeding the bounds), skipping crop.")
         return None
@@ -118,20 +128,23 @@ def crop_svg(
         suffix = "cropped"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
         if confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
+
+            scaled_crop_box = (
+                crop_box[0] / orig_width * view_box[2],
+                crop_box[1] / orig_height * view_box[3],
+                crop_box[2] / orig_width * view_box[2],
+                crop_box[3] / orig_height * view_box[3],
+                )
+            
             try:
-                tree = ET.parse(in_path)
-                root = tree.getroot()
-                x = crop_box[0]
-                y = crop_box[1]
-                w = crop_box[2] - crop_box[0]
-                h = crop_box[3] - crop_box[1]
+                x = scaled_crop_box[0] + view_box[0]
+                y = scaled_crop_box[1] + view_box[1]
+                w = scaled_crop_box[2]
+                h = scaled_crop_box[3]
                 logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
                 root.set("viewBox", f"{x} {y} {w} {h}")
-                # root.set("width", f"{w}"+unit)
-                # root.set("height", f"{h}"+unit)
                 tree.write(out_path, encoding="utf-8", xml_declaration=True)
                 preview_img = vec.show_svg(out_path, dpi=dpi)
-                sz, unit = vec.get_svg_size(out_path)
                 vec.optimize_svg(out_path, out_path)
                 preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] SVG saved to {out_path}") if logger else None
