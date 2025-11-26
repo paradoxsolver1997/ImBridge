@@ -124,14 +124,23 @@ def transform_svg(
 
     def mat2str(mat: list[float, float, float, float, float, float]) -> str:
         return "matrix(" + " ".join(f"{x}" for x in mat) + ")"
-    (orig_width, orig_height), unit = vec.get_svg_size(in_path)
+    
+    try:
+        tree = ET.parse(in_path)
+        root = tree.getroot()
+        (orig_width, orig_height), unit = vec.get_size_from_root(root)
+        view_box = vec.get_view_box_from_root(root)
+    except Exception:
+        raise RuntimeError("Failed to parse SVG dimensions.")
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
         in_fmt = os.path.splitext(in_path)[1].lower()
         suffix = "resized"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
         
-        
+        if view_box is None or not isinstance(view_box, Tuple):
+            view_box = (0, 0, orig_width, orig_height)
+            root.set("viewBox", "{} {} {} {}".format(*view_box))
         mat = vec.compute_trans_matrix()
 
         if 'new_width' in kwargs and 'new_height' in kwargs:
@@ -150,16 +159,9 @@ def transform_svg(
             target_width = orig_width
             target_height = orig_height
         mat = vec.compute_trans_matrix(mat, scale=(scale_x, scale_y))
-
-        try:
-            tree = ET.parse(in_path)
-            root = tree.getroot()
-        except Exception:
-            raise RuntimeError("Failed to parse SVG dimensions.")
         
-        root.set("viewBox", f"0 0 {target_width} {target_height}")
-        root.set("width", str(target_width))
-        root.set("height", str(target_height))
+        #root.set("width", str(target_width))
+        #root.set("height", str(target_height))
 
         if 'flip_lr' in kwargs and kwargs['flip_lr']:
             mat = vec.compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
@@ -173,9 +175,7 @@ def transform_svg(
                 temp_value = target_width
                 target_width = target_height
                 target_height = temp_value
-                root.set("viewBox", f"0 0 {target_width} {target_height}")
-                root.set("width", str(target_width))
-                root.set("height", str(target_height))
+                
             angle_map = {
                 0: [0, 0],
                 90: [0, target_height],
@@ -188,6 +188,8 @@ def transform_svg(
                 translate=angle_map.get(angle, [0, 0])
             )
             logger.info(f"[Transform] Rotating SVG by {angle} degrees") if logger else None
+        
+        view_box = vec.transform_box(view_box, mat)
         try:
             g = ET.Element("g")
             for child in list(root):
@@ -195,6 +197,9 @@ def transform_svg(
                 root.remove(child)
             g.set("transform", " ".join([mat2str(mat)]))
             root.append(g)
+            root.set("viewBox", "{} {} {} {}".format(*view_box))
+            root.set("width", str(target_width))
+            root.set("height", str(target_height))
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
             vec.optimize_svg(out_path, out_path)
             preview_img = vec.show_svg(out_path, dpi=dpi)

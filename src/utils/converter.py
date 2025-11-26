@@ -306,12 +306,15 @@ def script_convert(in_path: str, out_dir: str, out_fmt: str = None, logger: Opti
     out_fmt = out_fmt if out_fmt is not None else in_fmt
     suffix = in_fmt.lstrip(".") + "2" + out_fmt.lstrip(".")
     out_path = os.path.join(out_dir, f"{base_name}_{suffix}{out_fmt}")
+    crop_flag = "-dEPSCrop" if in_fmt in (".ps", ".eps") else "-dUseCropBox"
     device = device_map[out_fmt]
     if confirm_single_page(in_path) and confirm_dir_existence(out_dir) and confirm_overwrite(out_path):
         cmd = [
             gs,
+            "-dSAFER",
             "-dBATCH",
             "-dNOPAUSE",
+            crop_flag,
             f"-sDEVICE={device}",
             f"-sOutputFile={out_path}",
             in_path,

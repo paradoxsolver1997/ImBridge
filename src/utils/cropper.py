@@ -127,11 +127,12 @@ def crop_svg(
                 h = crop_box[3] - crop_box[1]
                 logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
                 root.set("viewBox", f"{x} {y} {w} {h}")
-                root.set("width", str(w))
-                root.set("height", str(h))
+                # root.set("width", f"{w}"+unit)
+                # root.set("height", f"{h}"+unit)
                 tree.write(out_path, encoding="utf-8", xml_declaration=True)
-                vec.optimize_svg(out_path, out_path)
                 preview_img = vec.show_svg(out_path, dpi=dpi)
+                sz, unit = vec.get_svg_size(out_path)
+                vec.optimize_svg(out_path, out_path)
                 preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] SVG saved to {out_path}") if logger else None
                 return out_path
@@ -253,6 +254,7 @@ def crop_script(
             # First translate to origin, then crop, then translate back
             # Otherwise, negative coordinates may appear, causing some viewers to display incorrectly
             # Therefore, the matrix and BoundingBox must be modified in two steps, not merged into one
+            '''
             vec.change_bbox(
                 in_path=in_path, 
                 out_path=out_path,
@@ -265,6 +267,7 @@ def crop_script(
                 out_path, 
                 translate=[0, crop_box[3] - orig_height],  # y direction translation
             )
+            '''
             vec.change_bbox(
                 in_path=in_path, 
                 out_path=out_path,

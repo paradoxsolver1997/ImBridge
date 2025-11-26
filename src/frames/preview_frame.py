@@ -114,7 +114,7 @@ class PreviewFrame(BaseFrame):
             if hasattr(self, "size_label"):
                 self.size_label.config(text=f"{int(orig_size[0])}x{int(orig_size[1])}"+unit)
             else:
-                self.size_label = tk.Label(self.title_frame, text=f"{int(orig_size[0])}x{int(orig_size[1])}", anchor="ne", bg="#f0f0f0")
+                self.size_label = tk.Label(self.title_frame, text=f"{int(orig_size[0])}x{int(orig_size[1])}"+unit, anchor="ne", bg="#f0f0f0")
                 self.size_label.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
             self._update_page_label()
         except Exception as e:
@@ -163,6 +163,7 @@ class PreviewFrame(BaseFrame):
                 self.preview_label.image = None
             if hasattr(self, "size_label"):
                 self.size_label.config(text="")
+            raise RuntimeError(e)
 
     def clear_preview(self):
         # Only clear image and size information, do not destroy buttons and page number

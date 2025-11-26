@@ -2,7 +2,7 @@ from PIL import Image
 import os
 import base64
 import subprocess
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, Tuple
 import tempfile
 import shutil
 import re
@@ -87,8 +87,9 @@ def show_script(in_path: str, dpi: int = 96) -> Image.Image:
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_path = cv.script2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
-            img = Image.open(out_path)
-            img.load()  # 强制读取到内存
+            with Image.open(out_path) as image:
+                #img.load()  # 强制读取到内存
+                img = image.copy()
         return img
     except Exception as ve:
         raise ve
@@ -98,18 +99,41 @@ def show_svg(in_path: str, dpi: int = None) -> Image.Image:
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_path = cv.svg2raster(in_path, tmp_dir, out_fmt=".png", dpi=dpi)
-            img = Image.open(out_path)
-            img.load()  # 强制读取到内存
+            with Image.open(out_path) as image:
+                # img.load()  # 强制读取所有数据到内存
+                img = rst.remove_alpha_channel(image.copy())  # 创建副本
             img = rst.remove_alpha_channel(img)
             print(f"Loaded SVG raster image size: {img.size}")
         return img
     except Exception as ve:
         raise ve
 
-def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+def get_svg_view_box(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    tree = ET.parse(in_path)
+    root = tree.getroot()
+    return get_view_box_from_root(root)
+    
+
+def get_view_box_from_root(root):
     try:
-        tree = ET.parse(in_path)
-        root = tree.getroot()
+        viewbox_str = root.get('viewBox')
+        viewbox = tuple(map(int, viewbox_str.split()))
+        return viewbox
+    except:
+        return None
+
+def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    tree = ET.parse(in_path)
+    root = tree.getroot()
+    full_size, unit = get_size_from_root(root)
+    viewbox = get_view_box_from_root(root)
+    if viewbox is not None and isinstance(viewbox, Tuple):
+        return (viewbox[2], viewbox[3]), unit
+    else:
+        return full_size, unit
+
+def get_size_from_root(root):
+    try:
         match = re.search(r'(\d+\.?\d*)(\D*)', root.get("width"))  # 匹配数字（包括小数）
         if match:
             width = int(float(match.group(1)))
@@ -240,7 +264,7 @@ def update_matrix(in_path: str, out_path: str, logger=None, **kwargs):
             mat = compute_trans_matrix(orig_mat, **kwargs)
             
             # 构建新值并替换
-            new_vals_str = " ".join(f"{int(x)}" for x in mat)
+            new_vals_str = " ".join(f"{float(x)}" for x in mat)
             if pattern_cm_sim.search(line):
                 new_vals_str = new_vals_str + " cm"
                 lines[i] = pattern_cm_sim.sub(new_vals_str, line)
@@ -557,3 +581,38 @@ def optimize_svg(input_path: str, output_path: str):
     
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(optimized_svg)
+
+
+def apply_transform(point, matrix):
+    """
+    对点应用仿射变换
+    
+    Args:
+        point: (x, y) 二元组
+        matrix: (a, b, c, d, e, f) 六元组变换矩阵
+               对应矩阵: [a c e]
+                        [b d f] 
+    
+    Returns:
+        (new_x, new_y) 变换后的坐标
+    """
+    x, y = point
+    a, b, c, d, e, f = matrix
+    
+    new_x = a * x + c * y + e
+    new_y = b * x + d * y + f
+    
+    return (new_x, new_y)
+
+def transform_box(
+    box: Tuple[int, int, int, int], 
+    mat: Tuple[float, float, float, float, float, float]): 
+
+    anchor_1 = apply_transform((box[0], box[1]), mat)
+    anchor_2 = apply_transform((box[0] + box[2], box[0] + box[3]), mat)
+    x_min = int(min(anchor_1[0], anchor_2[0]))
+    x_max = int(max(anchor_1[0], anchor_2[0]))
+    y_min = int(min(anchor_1[1], anchor_2[1]))
+    y_max = int(max(anchor_1[1], anchor_2[1]))
+    box = (x_min, y_min, x_max - x_min, y_max - y_min)
+    return box
