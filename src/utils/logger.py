@@ -1,5 +1,7 @@
 import logging
 from tkinter import messagebox
+import tkinter
+import time
 
 
 class GuiLogHandler(logging.Handler):
@@ -8,14 +10,27 @@ class GuiLogHandler(logging.Handler):
     def __init__(self, text_widget=None):
         super().__init__()
         self.text_widget = text_widget
+        self.scroll_delay = 0.1
 
     def emit(self, record):
         msg = self.format(record)
-        if self.text_widget:
-            self.text_widget.config(state="normal")
-            self.text_widget.insert("end", msg + "\n")
-            self.text_widget.see("end")
-            self.text_widget.config(state="disabled")
+        if self.text_widget and self.text_widget.winfo_exists():  # 添加控件存在性检查
+            try:
+                self.text_widget.config(state="normal")
+                self.text_widget.insert("end", msg + "\n")
+
+                # 添加延时让滚动效果更明显
+                if self.scroll_delay > 0:
+                    self.text_widget.update()  # 强制更新界面
+                    time.sleep(self.scroll_delay)  # 短暂延时
+
+                self.text_widget.see("end")  # 这行已经实现了自动滚动
+                self.text_widget.config(state="disabled")
+                # 添加界面更新确保立即显示
+                self.text_widget.update_idletasks()
+            except tkinter.TclError:
+                # 处理控件已被销毁的情况
+                pass
 
 
 class Logger:

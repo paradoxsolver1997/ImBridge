@@ -125,7 +125,7 @@ class PreviewFrame(BaseFrame):
         try:
             ext = os.path.splitext(img_path)[1].lower()
             if ext == ".pdf":
-                img = vec.show_script(img_path)
+                img = vec.show_script(img_path, dpi=self.dpi)
                 img = process_callback(img) if process_callback else img
                 sz, unit = vec.get_pdf_size(img_path)
                 self.show_image(img, unit=unit)

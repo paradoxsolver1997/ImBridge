@@ -207,6 +207,7 @@ class ConvertTab(BaseTab):
                     in_path=f,
                     out_dir=out_dir,
                     out_fmt=out_ext,
+                    dpi=kwargs.get('dpi', 300),
                     logger=self.logger,
                 )
             # SVG -> Script (pdf/eps/ps)

@@ -130,11 +130,11 @@ class InkTab(BaseTab):
                     bmp_path = rst.grayscale_image(in_path, tmp_dir, binarize=True, save_image=True, logger=self.logger)
                 if save_image:
                     out_path = vec.trace_bmp_to_svg(bmp_path, out_dir, logger=self.logger)
-                    self.preview_frame.show_image(vec.show_svg(out_path))
+                    self.preview_frame.show_file(out_path)
                     self.logger.info(f'Tracing {os.path.basename(in_path)} successful, saved to {os.path.basename(out_path)}.')
                 else:
                     temp_bmp = vec.trace_bmp_to_svg(bmp_path, tmp_dir, logger=self.logger)
-                    self.preview_frame.show_image(vec.show_svg(temp_bmp))
+                    self.preview_frame.show_file(temp_bmp)
                     self.logger.info(f'Tracing {os.path.basename(in_path)} successful.')
                     out_path = None
             return out_path

@@ -131,7 +131,7 @@ def transform_svg(
     if save_image:
         base_name = os.path.splitext(os.path.basename(in_path))[0]
         in_fmt = os.path.splitext(in_path)[1].lower()
-        suffix = "resized"
+        suffix = "transformed"
         out_path = os.path.join(out_dir, f"{base_name}_{suffix}{in_fmt}")
         
         if view_box is None or not isinstance(view_box, Tuple):
