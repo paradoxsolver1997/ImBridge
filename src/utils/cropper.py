@@ -197,16 +197,16 @@ def crop_pdf(
                     with fitz.open() as new_doc:
                         for page in doc:
                             new_page = new_doc.new_page(width=orig_width, height=orig_height)
+                            new_page.set_cropbox(fitz.Rect(*crop_box))
                             new_page.show_pdf_page(
                                 new_page.rect,  # Target rectangle
                                 doc,  # Source document
                                 page.number,  # Source page number
-                                clip=None,  # No clipping
+                                clip=crop_box,  # No clipping
                                 rotate=0,  # No rotation
                                 keep_proportion=False,  # Do not keep proportion (use our scaling)
                                 overlay=True
-                            )
-                            new_page.set_cropbox(fitz.Rect(*crop_box))
+                            )                            
                             logger.info(f"[vector] Set cropbox to {crop_box}") if logger else None
                         new_doc.save(out_path)
                 preview_img = vec.show_script(out_path, dpi=dpi)
