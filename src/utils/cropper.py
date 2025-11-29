@@ -3,7 +3,6 @@ from PIL import Image, ImageDraw
 import os
 import fitz  # PyMuPDF
 import math
-import xml.etree.ElementTree as ET
 from src.utils.logger import Logger
 
 from src.utils.commons import confirm_overwrite
@@ -101,22 +100,21 @@ def crop_svg(
 
     dpi = kwargs.get("dpi", 96)
     try:
-        ET.register_namespace('', 'http://www.w3.org/2000/svg')
-        tree = ET.parse(in_path)
-        root = tree.getroot()
-        view_box = vec.get_view_box_from_root(root)
-        (orig_width, orig_height), unit = vec.get_size_from_root(root)
+        view_box = vec.get_svg_view_box(in_path)
+        (orig_width, orig_height), unit = vec.get_svg_size(in_path)
         if view_box is None:
             view_box = (0, 0, orig_width, orig_height)
-            root.set("viewBox", "{} {} {} {}".format(*view_box))
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
     
-    def display_crop_svg(img):
-        x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
-        y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
-        x2 = math.floor(crop_box[2] / 72 * dpi)
-        y2 = math.floor(crop_box[3] / 72 * dpi)
+    def display_crop_svg(img, unit):
+        if unit == 'pt':
+            x1 = max(math.floor(crop_box[0] / 72 * dpi), 0)
+            y1 = max(math.floor(crop_box[1] / 72 * dpi), 0)
+            x2 = math.floor(crop_box[2] / 72 * dpi)
+            y2 = math.floor(crop_box[3] / 72 * dpi)
+        else:
+            x1, y1, x2, y2 = crop_box
         return display_crop(img, crop_box=(x1, y1, x2, y2))
 
     if not confirm_cropbox(crop_box, (orig_width, orig_height)):
@@ -143,10 +141,13 @@ def crop_svg(
                 w = scaled_crop_box[2] - scaled_crop_box[0]
                 h = scaled_crop_box[3] - scaled_crop_box[1]
                 logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
-                root.set("viewBox", f"{x} {y} {w} {h}")
-                root.set("width", f"{crop_box[2]-crop_box[0]}{unit}")
-                root.set("height", f"{crop_box[3]-crop_box[1]}{unit}")
-                tree.write(out_path, encoding="utf-8", xml_declaration=True)
+                
+                vec.set_svg_view_box(in_path, out_path, f"{x} {y} {w} {h}")
+                vec.set_svg_size(
+                    out_path, 
+                    out_path, 
+                    width_str=f"{crop_box[2]-crop_box[0]}{unit}",
+                    height_str=f"{crop_box[3]-crop_box[1]}{unit}")
                 preview_img = vec.show_svg(out_path, dpi=dpi)
                 preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] SVG saved to {out_path}") if logger else None
@@ -156,7 +157,7 @@ def crop_svg(
         else:
             return None
     else:
-        preview_img = display_crop_svg(vec.show_svg(in_path, dpi=dpi))
+        preview_img = display_crop_svg(vec.show_svg(in_path, dpi=dpi), unit)
         preview_callback(preview_img, unit) if preview_callback else None
         logger.info(f"[Transform] see preview frame for cropping effect") if logger else None
         return None

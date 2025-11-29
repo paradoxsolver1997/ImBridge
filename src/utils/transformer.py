@@ -1,17 +1,13 @@
 from typing import Optional, Tuple, Callable
 from PIL import Image, ImageEnhance, ImageFilter
 import os
-import tempfile
 import fitz  # PyMuPDF
-import shutil
-import xml.etree.ElementTree as ET
 
 from src.utils.commons import confirm_overwrite
 from src.utils.commons import confirm_single_page
 from src.utils.commons import confirm_dir_existence
 
 from src.utils.logger import Logger
-import src.utils.converter as cv
 import src.utils.vector as vec
 
 
@@ -127,11 +123,8 @@ def transform_svg(
     
     
     try:
-        ET.register_namespace('', 'http://www.w3.org/2000/svg')
-        tree = ET.parse(in_path)
-        root = tree.getroot()
-        view_box = vec.get_view_box_from_root(root)
-        (orig_width, orig_height), unit = vec.get_size_from_root(root)
+        view_box = vec.get_svg_view_box(in_path)
+        (orig_width, orig_height), unit = vec.get_svg_size(in_path)
     except Exception:
         raise RuntimeError("Failed to parse SVG dimensions.")
 
@@ -143,7 +136,7 @@ def transform_svg(
         
         if view_box is None or not isinstance(view_box, Tuple):
             view_box = (0, 0, orig_width, orig_height)
-            root.set("viewBox", "{} {} {} {}".format(*view_box))
+
         mat = vec.compute_trans_matrix()
 
         if 'new_width' in kwargs and 'new_height' in kwargs:
@@ -162,9 +155,6 @@ def transform_svg(
             target_width = orig_width
             target_height = orig_height
         mat = vec.compute_trans_matrix(mat, scale=(scale_x, scale_y))
-        
-        #root.set("width", str(target_width))
-        #root.set("height", str(target_height))
 
         if 'flip_lr' in kwargs and kwargs['flip_lr']:
             mat = vec.compute_trans_matrix(mat, flip_lr=True, translate=[target_width, 0])
@@ -193,16 +183,13 @@ def transform_svg(
             logger.info(f"[Transform] Rotating SVG by {angle} degrees") if logger else None
         view_box = vec.transform_box(view_box, mat)
         try:
-            g = ET.Element("g")
-            for child in list(root):
-                g.append(child)
-                root.remove(child)
-            g.set("transform", " ".join([mat2str(mat)]))
-            root.append(g)
-            root.set("viewBox", "{} {} {} {}".format(*view_box))
-            root.set("width", f"{target_width}{unit}")
-            root.set("height", f"{target_height}{unit}")
-            tree.write(out_path, encoding="utf-8", xml_declaration=True)
+            vec.set_svg_transform(in_path, out_path, " ".join([mat2str(mat)]))
+            vec.set_svg_view_box(out_path, out_path, "{} {} {} {}".format(*view_box))
+            vec.set_svg_size(
+                out_path, 
+                out_path, 
+                width_str=f"{target_width}{unit}",
+                height_str=f"{target_height}{unit}")
             preview_img = vec.show_svg(out_path, dpi=dpi)
             preview_callback(preview_img, unit) if preview_callback else None
             logger.info(f"[Transform] svg saved to {out_path}") if logger else None

@@ -107,14 +107,41 @@ def show_svg(in_path: str, dpi: int = None) -> Image.Image:
     except Exception as ve:
         raise ve
 
+
+def set_svg_transform(in_path, out_path, transform_str):
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    tree = ET.parse(in_path)
+    root = tree.getroot()
+    g = ET.Element("g")
+    for child in list(root):
+        g.append(child)
+        root.remove(child)
+    g.set("transform", transform_str)
+    root.append(g)
+    tree.write(out_path, encoding="utf-8", xml_declaration=True)
+
+
+def set_svg_view_box(in_path: str, out_path: str, view_box_str: str):
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    tree = ET.parse(in_path)
+    root = tree.getroot()
+    root.set("viewBox", view_box_str)
+    tree.write(out_path, encoding="utf-8", xml_declaration=True)
+
+
+def set_svg_size(in_path: str, out_path: str, width_str: str, height_str: str):
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    tree = ET.parse(in_path)
+    root = tree.getroot()
+    root.set("width", width_str)
+    root.set("height", height_str)
+    tree.write(out_path, encoding="utf-8", xml_declaration=True)
+
+
 def get_svg_view_box(in_path: str) -> tuple[Optional[float], Optional[float]]:
     ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(in_path)
     root = tree.getroot()
-    return get_view_box_from_root(root)
-    
-
-def get_view_box_from_root(root):
     try:
         viewbox_str = root.get('viewBox')
         return tuple(map(float, viewbox_str.split()))
@@ -125,10 +152,6 @@ def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
     ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(in_path)
     root = tree.getroot()
-    full_size, unit = get_size_from_root(root)
-    return full_size, unit
-
-def get_size_from_root(root):
     try:
         match = re.search(r'(\d+\.?\d*)(\D*)', root.get("width"))  # 匹配数字（包括小数）
         if match:
