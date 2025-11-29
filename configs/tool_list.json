@@ -27,15 +27,6 @@
         "homepage": "https://cairosvg.org/"
     },
     {
-        "key": "scour",
-        "display": "Scour SVG Optimizer",
-        "executables": ["scour"],
-        "config_key": null,
-        "type": "python",
-        "desc": "SVG optimizer that cleans and compresses SVG files, improves browser compatibility and reduces file size.",
-        "homepage": "https://github.com/scour-project/scour"
-    },
-    {
         "key": "potrace",
         "display": "Potrace",
         "executables": ["potrace"],

@@ -127,6 +127,7 @@ def transform_svg(
     
     
     try:
+        ET.register_namespace('', 'http://www.w3.org/2000/svg')
         tree = ET.parse(in_path)
         root = tree.getroot()
         view_box = vec.get_view_box_from_root(root)
@@ -202,7 +203,6 @@ def transform_svg(
             root.set("width", f"{target_width}{unit}")
             root.set("height", f"{target_height}{unit}")
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
-            vec.optimize_svg(out_path, out_path)
             preview_img = vec.show_svg(out_path, dpi=dpi)
             preview_callback(preview_img, unit) if preview_callback else None
             logger.info(f"[Transform] svg saved to {out_path}") if logger else None

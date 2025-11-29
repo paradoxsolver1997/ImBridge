@@ -9,7 +9,6 @@ import re
 import fitz  # PyMuPDF
 import numpy as np
 from xml.etree import ElementTree as ET
-import scour.scour as scour
 
 import src.utils.converter as cv
 import src.utils.raster as rst
@@ -109,6 +108,7 @@ def show_svg(in_path: str, dpi: int = None) -> Image.Image:
         raise ve
 
 def get_svg_view_box(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(in_path)
     root = tree.getroot()
     return get_view_box_from_root(root)
@@ -122,6 +122,7 @@ def get_view_box_from_root(root):
         return None
 
 def get_svg_size(in_path: str) -> tuple[Optional[float], Optional[float]]:
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(in_path)
     root = tree.getroot()
     full_size, unit = get_size_from_root(root)
@@ -479,6 +480,7 @@ def svg_analyzer(svg_path: str) -> Dict[str, Any]:
         "num_images": 0,
         "images": [],
     }
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(svg_path)
     root = tree.getroot()
     # Count paths
@@ -558,25 +560,6 @@ def trace_bmp_to_svg(
                 return out_path
             except Exception as e:
                 raise RuntimeError(f'potrace.exe failed: {e}')
-
-
-def optimize_svg(input_path: str, output_path: str):
-    """Optimize SVG using Scour"""
-    with open(input_path, 'r', encoding='utf-8') as f:
-        input_svg = f.read()
-    
-    # 设置优化选项
-    options = scour.sanitizeOptions()
-    options.enable_viewboxing = True
-    options.strip_comments = True
-    options.strip_ids = False
-    options.remove_metadata = True
-    
-    optimized_svg = scour.scourString(input_svg, options)
-    
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(optimized_svg)
-
 
 def apply_transform(point, matrix):
     """

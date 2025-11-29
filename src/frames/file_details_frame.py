@@ -58,9 +58,11 @@ class FileDetailsFrame(BaseFrame):
                         self.tree.insert("", "end", iid=f, values=(os.path.basename(f), size_kb, mtime))
                         self.preview_frame.add_file_to_queue(f)
                     except Exception as e:
-                        self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "读取失败", str(e)))
+                        if not self.tree.exists(f):
+                            self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "读取失败", str(e)))
                 else:
-                    self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "不存在", "-"))
+                    if not self.tree.exists(f):
+                        self.tree.insert("", "end", iid=f, values=(os.path.basename(f), "不存在", "-"))
         
             self.tree.bind("<<TreeviewSelect>>", self.on_select)
 

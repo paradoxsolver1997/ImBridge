@@ -3,5 +3,4 @@ Pillow
 pillow-heif
 numpy
 cairosvg
-scour
 reportlab

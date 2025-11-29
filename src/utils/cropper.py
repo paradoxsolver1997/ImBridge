@@ -101,6 +101,7 @@ def crop_svg(
 
     dpi = kwargs.get("dpi", 96)
     try:
+        ET.register_namespace('', 'http://www.w3.org/2000/svg')
         tree = ET.parse(in_path)
         root = tree.getroot()
         view_box = vec.get_view_box_from_root(root)
@@ -139,13 +140,14 @@ def crop_svg(
             try:
                 x = scaled_crop_box[0] + view_box[0]
                 y = scaled_crop_box[1] + view_box[1]
-                w = scaled_crop_box[2]
-                h = scaled_crop_box[3]
+                w = scaled_crop_box[2] - scaled_crop_box[0]
+                h = scaled_crop_box[3] - scaled_crop_box[1]
                 logger.info(f"[vector] Cropping SVG viewBox to ({x},{y},{w},{h})") if logger else None
                 root.set("viewBox", f"{x} {y} {w} {h}")
+                root.set("width", f"{crop_box[2]-crop_box[0]}{unit}")
+                root.set("height", f"{crop_box[3]-crop_box[1]}{unit}")
                 tree.write(out_path, encoding="utf-8", xml_declaration=True)
                 preview_img = vec.show_svg(out_path, dpi=dpi)
-                vec.optimize_svg(out_path, out_path)
                 preview_callback(preview_img, unit) if preview_callback else None
                 logger.info(f"[vector] SVG saved to {out_path}") if logger else None
                 return out_path
