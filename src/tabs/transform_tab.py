@@ -358,18 +358,22 @@ class TransformTab(BaseTab):
             self.scale_y_factor_var.set(1.0)
 
             if ext == '.svg':
-                sz = vec.get_svg_size(file)
+                sz, unit = vec.get_svg_size(file)
             elif ext == '.pdf':
-                sz = vec.get_pdf_size(file)
+                sz, unit = vec.get_pdf_size(file)
             elif ext in ['.eps', '.ps']:
-                sz = vec.get_script_size(file)
+                sz, unit = vec.get_script_size(file)
             else:
-                sz = rst.get_raster_size(file)
+                sz, unit = rst.get_raster_size(file)
                 
             self.width_entry.var.set(value=sz[0])
             self.height_entry.var.set(value=sz[1])
-
-            unit = 'pt' if ext in script_formats else 'px'
+            '''
+            self.width_entry.label.config(text=f"W ({unit})")
+            self.width_entry.label.config(text=f"H ({unit})")
+            self.width_entry.label.config(text=f"X ({unit})")
+            self.width_entry.label.config(text=f"Y ({unit})")
+            '''
             self.resize_radio.config(text=f'Resize ({unit})')
 
             if ext == '.pdf':

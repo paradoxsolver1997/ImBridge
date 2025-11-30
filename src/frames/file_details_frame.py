@@ -123,22 +123,22 @@ class FileDetailsFrame(BaseFrame):
         # PDF/EPS/PS: display physical dimensions (cm)
         elif typ in ('PDF'):
             try:
-                (width_pt, height_pt), _ = vec.get_pdf_size(path)
+                (width_pt, height_pt), unit = vec.get_pdf_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
-                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} pt)'
+                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} {unit})'
                 else:
                     meta['Size'] = 'N/A'
             except Exception:
                 meta['Size'] = 'N/A'
         elif typ in ('EPS','PS'):
             try:
-                (width_pt, height_pt), _ = vec.get_script_size(path)
+                (width_pt, height_pt), unit = vec.get_script_size(path)
                 if width_pt and height_pt:
                     width_in = width_pt/72
                     height_in = height_pt/72
-                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} pt)'
+                    meta['Size'] = f'{width_in*2.54:.2f} × {height_in*2.54:.2f} cm ({width_pt} × {height_pt} {unit})'
                 else:
                     meta['Size'] = 'N/A'
             except Exception:

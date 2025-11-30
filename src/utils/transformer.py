@@ -30,16 +30,19 @@ def transform_raster(
 
     logger.info(f"[enhance] resize to: {(new_width, new_height)}") if logger else None
 
-    # Separate alpha channel
+    # Separate alpha channel at the beginning
     if img.mode == "RGBA":
         rgb = img.convert("RGB")
+        # Resize alpha channel separately but keep it for later
         alpha = img.getchannel("A").resize(
             (new_width, new_height), Image.Resampling.LANCZOS
         )
         img_2 = rgb.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        has_alpha = True
     else:
         img_2 = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         alpha = None
+        has_alpha = False
 
     if new_height > img.height and new_width > img.width:
         logger.info("[enhance] sharpen") if logger else None
@@ -50,31 +53,45 @@ def transform_raster(
         logger.info("[enhance] median filter") if logger else None
         img_2 = img_2.filter(ImageFilter.MedianFilter(size=kwargs.get('median_size', 3)))
         logger.info("[enhance] enhance contrast") if logger else None
-        # Merge alpha channel
-        if alpha is not None:
-            img_2 = img_2.convert("RGBA")
-            img_2.putalpha(alpha)
         logger.info("Upscale finished.") if logger else None
+
     tilt = False
     if 'rotate_angle' in kwargs:
         angle = kwargs.get('rotate_angle') % 360
         logger.info(f"[crop] rotate image by {angle} degrees") if logger else None
         img_2 = img_2.rotate(angle, expand=True)
+        # Also rotate alpha channel if exists
+        if has_alpha:
+            alpha = alpha.rotate(angle, expand=True)
         if angle in [90, 270]:
             tilt = True
 
     if 'flip_lr' in kwargs and kwargs['flip_lr']:
         if tilt:
             img_2 = img_2.transpose(Image.FLIP_TOP_BOTTOM)
+            if has_alpha:
+                alpha = alpha.transpose(Image.FLIP_TOP_BOTTOM)
         else:
             img_2 = img_2.transpose(Image.FLIP_LEFT_RIGHT)
+            if has_alpha:
+                alpha = alpha.transpose(Image.FLIP_LEFT_RIGHT)
         logger.info(f"[crop] flip image left-right") if logger else None
+        
     if 'flip_tb' in kwargs and kwargs['flip_tb']:
         if tilt:
             img_2 = img_2.transpose(Image.FLIP_LEFT_RIGHT)
+            if has_alpha:
+                alpha = alpha.transpose(Image.FLIP_LEFT_RIGHT)
         else:
             img_2 = img_2.transpose(Image.FLIP_TOP_BOTTOM)
+            if has_alpha:
+                alpha = alpha.transpose(Image.FLIP_TOP_BOTTOM)
         logger.info(f"[crop] flip image top-bottom") if logger else None
+
+    # Merge alpha channel at the very end
+    if has_alpha:
+        img_2 = img_2.convert("RGBA")
+        img_2.putalpha(alpha)
 
     return img_2
 
@@ -100,11 +117,12 @@ def transform_image(
     if save_image:
         img.save(out_path)
         logger.info(f"[Transform] saved to: {out_path}") if logger else None
-        return out_path
     else:
+        out_path = None
         logger.info("[Transform] see preview frame for transformation effect") if logger else None
-        preview_callback(img) if preview_callback else None
-        return None
+
+    preview_callback(img) if preview_callback else None
+    return out_path
 
 
 def transform_svg(
