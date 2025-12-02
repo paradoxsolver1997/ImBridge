@@ -93,8 +93,10 @@ class FileDetailsFrame(BaseFrame):
                 head = f.read(512)
         except:
             return 'Unknown','Unknown'
+        
         sig = head[:16]
         txt_head = head.decode('utf-8','ignore').lower()
+        
         if sig.startswith(b'\x89PNG\r\n\x1a\n'): return 'PNG','Raster'
         if sig.startswith(b'\xff\xd8\xff'): return 'JPEG','Raster'
         if head[:6] in (b'GIF87a', b'GIF89a'): return 'GIF','Raster'
@@ -103,7 +105,13 @@ class FileDetailsFrame(BaseFrame):
         if sig[:4] in (b'II*\x00', b'MM\x00*'): return 'TIFF','Raster'
         if head.startswith(b'%PDF-'): return 'PDF','Vector'
         if head.startswith(b'%!PS'): return 'EPS','Vector'
-        if '<svg' in txt_head[:200]: return 'SVG','Vector'
+        
+        # 改进SVG检测逻辑
+        # 1. 检查完整的前512字节，不只是前200
+        # 2. 同时检测'svg'出现在标签中，不一定是<svg
+        if 'svg' in txt_head and ('<svg' in txt_head or '<ns0:svg' in txt_head):
+            return 'SVG','Vector'
+        
         return 'Unknown','Unknown'
 
     def read_image_meta(self, path):

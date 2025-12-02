@@ -506,12 +506,21 @@ def svg_analyzer(svg_path: str) -> Dict[str, Any]:
     ET.register_namespace('', 'http://www.w3.org/2000/svg')
     tree = ET.parse(svg_path)
     root = tree.getroot()
-    # Count paths
-    paths = root.findall(".//{http://www.w3.org/2000/svg}path")
+
+    def find_all_by_local_name(root, tag_name):
+        """查找指定标签名的所有元素，忽略命名空间前缀"""
+        elements = []
+        for elem in root.iter():
+            if elem.tag.split('}')[-1] == tag_name:
+                elements.append(elem)
+        return elements
+
+    paths = find_all_by_local_name(root, 'path')
+    images = find_all_by_local_name(root, 'image')
+
     result["num_paths"] = len(paths)
-    # Count images
-    images = root.findall(".//{http://www.w3.org/2000/svg}image")
     result["num_images"] = len(images)
+    import pdb; pdb.set_trace()
     svg_dir = os.path.dirname(svg_path)
     for img in images:
         w = img.get("width")
