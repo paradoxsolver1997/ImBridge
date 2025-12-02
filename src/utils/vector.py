@@ -520,7 +520,6 @@ def svg_analyzer(svg_path: str) -> Dict[str, Any]:
 
     result["num_paths"] = len(paths)
     result["num_images"] = len(images)
-    import pdb; pdb.set_trace()
     svg_dir = os.path.dirname(svg_path)
     for img in images:
         w = img.get("width")
