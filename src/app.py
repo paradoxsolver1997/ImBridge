@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 import os
+import tempfile
 
 from src.utils.logger import Logger
 
@@ -42,9 +43,16 @@ class App(tk.Tk):
         tkfont.nametofont("TkDefaultFont").config(family="Segoe UI", size=10)
         # Logging system
         self.logger = Logger(gui_widget=None)  # Not bound yet, will bind log_text later
-        self.output_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "output"
-        )
+
+        self.output_dir = tempfile.gettempdir()
+        
+        # 方案2：在临时目录下创建应用专属子目录（推荐）
+        app_name = "ImBridge"  # 替换为你的应用名
+        self.output_dir = os.path.join(tempfile.gettempdir(), app_name)
+        
+        # 确保目录存在
+        os.makedirs(self.output_dir, exist_ok=True)
+
         self.build_content()
 
 
